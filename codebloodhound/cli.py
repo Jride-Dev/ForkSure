@@ -9,6 +9,8 @@ from rich.table import Table
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .reports import render_forks
+from .security.audit import run_security_audit
+from .security.findings import SecurityFinding
 from .security.scoring import calculate_security_score
 from .security.secrets import scan_secrets
 from .security.scripts import scan_unsafe_scripts
@@ -64,29 +66,7 @@ def security_scripts(
 ) -> None:
     """Scan local scripts and config files for risky execution patterns."""
     findings = scan_unsafe_scripts(path)
-    table = Table(title="Unsafe Script Findings", show_lines=False)
-    table.add_column("Severity", style="bold")
-    table.add_column("Category")
-    table.add_column("File", overflow="fold")
-    table.add_column("Line", justify="right")
-    table.add_column("Title")
-
-    for finding in findings:
-        table.add_row(
-            finding.severity.upper(),
-            finding.category,
-            finding.file_path or "-",
-            str(finding.line or "-"),
-            finding.title,
-        )
-
-    console.print(table)
-    score = calculate_security_score(findings)
-    console.print(
-        f"Security score: [bold]{score['score']}[/bold]/100 "
-        f"Risk level: [bold]{score['risk_level']}[/bold] "
-        f"Findings: {score['finding_count']}"
-    )
+    _render_security_findings("Unsafe Script Findings", findings)
 
 
 @security_app.command("secrets")
@@ -103,7 +83,28 @@ def security_secrets(
 ) -> None:
     """Scan local files for secrets using Gitleaks when available."""
     findings = scan_secrets(path)
-    table = Table(title="Secret Findings", show_lines=False)
+    _render_security_findings("Secret Findings", findings)
+
+
+@security_app.command("audit")
+def security_audit(
+    path: Path = typer.Argument(
+        ...,
+        help="Local file or directory to scan.",
+        exists=True,
+        file_okay=True,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+    ),
+) -> None:
+    """Run all local security scanners."""
+    findings = run_security_audit(path)
+    _render_security_findings("Security Audit Findings", findings)
+
+
+def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
+    table = Table(title=title, show_lines=False)
     table.add_column("Severity", style="bold")
     table.add_column("Category")
     table.add_column("File", overflow="fold")
