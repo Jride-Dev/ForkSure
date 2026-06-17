@@ -26,3 +26,4 @@ codebloodhound = "codebloodhound.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--basetemp=.pytest-tmp"

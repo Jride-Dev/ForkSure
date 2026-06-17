@@ -1,11 +1,3 @@
-.venv/
 __pycache__/
-*.pyc
-.env
 .pytest_cache/
-.ruff_cache/
-dist/
-build/
-*.egg-info/
-reports/*.html
-reports/*.json
+.pytest-tmp/
