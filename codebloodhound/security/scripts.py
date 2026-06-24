@@ -18,7 +18,27 @@ SCANNED_FILENAMES = {
     "docker-compose.yml",
 }
 SCANNED_SUFFIXES = {".sh", ".ps1"}
-SKIPPED_DIRS = {".git", ".hg", ".svn", ".venv", "venv", "node_modules", "__pycache__", "dist", "build"}
+IGNORED_DIR_NAMES = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "pycache",
+    ".pytest_cache",
+    ".pytest-tmp",
+    "tmp_pytest_run",
+    ".ruff_cache",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "htmlcov",
+    ".mypy_cache",
+    ".tox",
+}
 
 
 @dataclass(frozen=True)
@@ -136,17 +156,37 @@ def scan_unsafe_scripts(path: str | Path) -> list[SecurityFinding]:
 
 def _iter_scannable_files(root: Path) -> Iterable[Path]:
     if root.is_file():
-        if _is_scannable_file(root, root.parent):
+        if not should_skip_path(root, root.parent) and _is_scannable_file(root, root.parent):
             yield root
         return
 
     for current_dir, dirnames, filenames in os.walk(root):
-        dirnames[:] = [dirname for dirname in dirnames if dirname not in SKIPPED_DIRS]
         current_path = Path(current_dir)
+        if should_skip_path(current_path, root):
+            dirnames[:] = []
+            continue
+
+        dirnames[:] = [
+            dirname
+            for dirname in dirnames
+            if not should_skip_path(current_path / dirname, root)
+        ]
         for filename in filenames:
             file_path = current_path / filename
-            if _is_scannable_file(file_path, root):
+            if not should_skip_path(file_path, root) and _is_scannable_file(file_path, root):
                 yield file_path
+
+
+def should_skip_path(path: Path, root: Path) -> bool:
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        parts = path.parts
+
+    if not parts and path.name:
+        parts = (path.name,)
+
+    return any(part.lower() in IGNORED_DIR_NAMES for part in parts)
 
 
 def _is_scannable_file(path: Path, root: Path) -> bool:

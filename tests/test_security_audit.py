@@ -77,3 +77,18 @@ def test_audit_command_detects_unsafe_script_findings(monkeypatch, tmp_path) -> 
     assert "Gitleaks unavailable" in result.output
     assert "HIGH" in result.output
     assert "Risk level: HIGH" in result.output
+
+
+def test_combined_audit_does_not_report_pytest_temp_fixture_files(monkeypatch, tmp_path) -> None:
+    for dirname in (".pytest-tmp", "tmp_pytest_run"):
+        script_dir = tmp_path / dirname / "test_scan"
+        script_dir.mkdir(parents=True)
+        script = script_dir / "install.sh"
+        script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
+
+    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
+
+    findings = run_security_audit(tmp_path)
+
+    assert [finding.id for finding in findings] == ["secrets-gitleaks-unavailable"]
+    assert calculate_security_score(findings)["score"] == 0
