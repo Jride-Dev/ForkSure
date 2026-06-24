@@ -11,6 +11,7 @@ from .github_client import GitHubAPIError, GitHubNotFoundError, GitHubRateLimitE
 from .reports import render_forks
 from .security.audit import run_security_audit
 from .security.findings import SecurityFinding
+from .security.sast import scan_sast
 from .security.scoring import calculate_security_score
 from .security.secrets import scan_secrets
 from .security.scripts import scan_unsafe_scripts
@@ -86,6 +87,28 @@ def security_secrets(
     _render_security_findings("Secret Findings", findings)
 
 
+@security_app.command("sast")
+def security_sast(
+    path: Path = typer.Argument(
+        ...,
+        help="Local file or directory to scan.",
+        exists=True,
+        file_okay=True,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+    ),
+    rules: str | None = typer.Option(
+        None,
+        "--rules",
+        help="Comma-separated Semgrep rules to run. Built-in aliases: sql,xss,csrf.",
+    ),
+) -> None:
+    """Scan local files for SAST findings using Semgrep when available."""
+    findings = scan_sast(path, rules=_parse_rule_option(rules))
+    _render_security_findings("SAST Findings", findings)
+
+
 @security_app.command("audit")
 def security_audit(
     path: Path = typer.Argument(
@@ -101,6 +124,13 @@ def security_audit(
     """Run all local security scanners."""
     findings = run_security_audit(path)
     _render_security_findings("Security Audit Findings", findings)
+
+
+def _parse_rule_option(value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    rules = [rule.strip() for rule in value.split(",") if rule.strip()]
+    return rules or None
 
 
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:

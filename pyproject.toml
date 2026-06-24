@@ -26,4 +26,4 @@ codebloodhound = "codebloodhound.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--basetemp=tmp_pytest_run -p no:cacheprovider"
+addopts = "-p no:cacheprovider"
