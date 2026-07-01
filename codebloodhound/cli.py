@@ -10,6 +10,7 @@ from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .reports import render_forks
 from .security.audit import run_security_audit
+from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
 from .security.sast import scan_sast
 from .security.scoring import calculate_security_score
@@ -107,6 +108,23 @@ def security_sast(
     """Scan local files for SAST findings using Semgrep when available."""
     findings = scan_sast(path, rules=_parse_rule_option(rules))
     _render_security_findings("SAST Findings", findings)
+
+
+@security_app.command("deps")
+def security_deps(
+    path: Path = typer.Argument(
+        ...,
+        help="Local file or directory to scan.",
+        exists=True,
+        file_okay=True,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+    ),
+) -> None:
+    """Scan dependency manifests, lockfiles, and update automation config."""
+    findings = scan_dependencies(path)
+    _render_security_findings("Dependency Hygiene Findings", findings)
 
 
 @security_app.command("audit")

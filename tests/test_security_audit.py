@@ -88,6 +88,19 @@ def test_combined_audit_includes_semgrep_unavailable_info_when_missing(monkeypat
     assert any(finding.id == "sast-semgrep-unavailable" for finding in findings)
 
 
+def test_combined_audit_includes_dependency_findings(monkeypatch, tmp_path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    uv_lock = tmp_path / "uv.lock"
+    uv_lock.write_text("version = 1\n", encoding="utf-8")
+    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+
+    findings = run_security_audit(tmp_path)
+
+    assert any(finding.id == "deps-python-uv-lockfile-found" for finding in findings)
+
+
 def test_audit_command_detects_unsafe_script_findings(monkeypatch, tmp_path) -> None:
     script = tmp_path / "install.sh"
     script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")

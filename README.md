@@ -11,3 +11,16 @@ codebloodhound forks owner/repo
 ```
 
 The token is optional, but authenticated requests get higher GitHub API limits.
+
+## Development Setup
+
+Recommended setup:
+
+```powershell
+python -m pip install uv
+uv sync
+python -m pytest -q
+```
+
+`uv.lock` is committed so dependency scanners such as Aikido can inspect the
+resolved dependency graph.
