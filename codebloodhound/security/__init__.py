@@ -3,6 +3,7 @@
 from .findings import SecurityFinding
 from .audit import run_security_audit
 from .dependencies import scan_dependencies
+from .osv import scan_osv
 from .scoring import calculate_security_score
 from .sast import scan_sast
 from .secrets import scan_secrets
@@ -13,6 +14,7 @@ __all__ = [
     "calculate_security_score",
     "run_security_audit",
     "scan_dependencies",
+    "scan_osv",
     "scan_sast",
     "scan_secrets",
     "scan_unsafe_scripts",

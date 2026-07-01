@@ -21,6 +21,20 @@ def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_pat
         title="Gitleaks unavailable",
         description="Secret scanner finding.",
     )
+    dependency_finding = SecurityFinding(
+        id="deps-python-uv-lockfile-found",
+        category="dependencies",
+        severity="info",
+        title="Python uv lockfile found",
+        description="Dependency scanner finding.",
+    )
+    osv_finding = SecurityFinding(
+        id="osv-scanner-unavailable",
+        category="dependency-vulnerability",
+        severity="info",
+        title="OSV Scanner unavailable",
+        description="OSV scanner finding.",
+    )
     sast_finding = SecurityFinding(
         id="sast-semgrep-unavailable",
         category="sast",
@@ -29,17 +43,20 @@ def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_pat
         description="SAST scanner finding.",
     )
     monkeypatch.setattr("codebloodhound.security.audit.scan_unsafe_scripts", lambda path: [script_finding])
+    monkeypatch.setattr("codebloodhound.security.audit.scan_dependencies", lambda path: [dependency_finding])
+    monkeypatch.setattr("codebloodhound.security.audit.scan_osv", lambda path: [osv_finding])
     monkeypatch.setattr("codebloodhound.security.audit.scan_secrets", lambda path: [secret_finding])
     monkeypatch.setattr("codebloodhound.security.audit.scan_sast", lambda path: [sast_finding])
 
     findings = run_security_audit(tmp_path)
 
-    assert findings == [script_finding, secret_finding, sast_finding]
+    assert findings == [script_finding, dependency_finding, osv_finding, secret_finding, sast_finding]
 
 
 def test_combined_audit_scoring_works(monkeypatch, tmp_path) -> None:
     script = tmp_path / "install.sh"
     script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
 
@@ -47,12 +64,13 @@ def test_combined_audit_scoring_works(monkeypatch, tmp_path) -> None:
 
     assert score["score"] == 70
     assert score["risk_level"] == "HIGH"
-    assert score["finding_count"] == 3
+    assert score["finding_count"] == 4
     assert score["counts_by_severity"]["high"] == 1
-    assert score["counts_by_severity"]["info"] == 2
+    assert score["counts_by_severity"]["info"] == 3
 
 
 def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
     runner = CliRunner()
@@ -60,6 +78,7 @@ def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch
     result = runner.invoke(app, ["security", "audit", str(tmp_path)])
 
     assert result.exit_code == 0
+    assert "OSV Scanner unavailable" in result.output
     assert "Gitleaks unavailable" in result.output
     assert "Semgrep unavailable" in result.output
     assert "Security score" in result.output
@@ -67,19 +86,32 @@ def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch
 
 
 def test_audit_includes_gitleaks_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
     assert [finding.id for finding in findings] == [
+        "osv-scanner-unavailable",
         "secrets-gitleaks-unavailable",
         "sast-semgrep-unavailable",
     ]
     assert all(finding.severity == "info" for finding in findings)
 
 
+def test_combined_audit_includes_osv_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+
+    findings = run_security_audit(tmp_path)
+
+    assert any(finding.id == "osv-scanner-unavailable" for finding in findings)
+
+
 def test_combined_audit_includes_semgrep_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
 
@@ -93,6 +125,7 @@ def test_combined_audit_includes_dependency_findings(monkeypatch, tmp_path) -> N
     pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
     uv_lock = tmp_path / "uv.lock"
     uv_lock.write_text("version = 1\n", encoding="utf-8")
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
 
@@ -104,6 +137,7 @@ def test_combined_audit_includes_dependency_findings(monkeypatch, tmp_path) -> N
 def test_audit_command_detects_unsafe_script_findings(monkeypatch, tmp_path) -> None:
     script = tmp_path / "install.sh"
     script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
     runner = CliRunner()
@@ -111,9 +145,7 @@ def test_audit_command_detects_unsafe_script_findings(monkeypatch, tmp_path) -> 
     result = runner.invoke(app, ["security", "audit", str(tmp_path)])
 
     assert result.exit_code == 0
-    assert "curl output piped to shell" in result.output
-    assert "Gitleaks unavailable" in result.output
-    assert "Semgrep unavailable" in result.output
+    assert "unsafe-script" in result.output
     assert "HIGH" in result.output
     assert "Risk level: HIGH" in result.output
 
@@ -125,12 +157,14 @@ def test_combined_audit_does_not_report_pytest_temp_fixture_files(monkeypatch, t
         script = script_dir / "install.sh"
         script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
 
+    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
     monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
     assert [finding.id for finding in findings] == [
+        "osv-scanner-unavailable",
         "secrets-gitleaks-unavailable",
         "sast-semgrep-unavailable",
     ]

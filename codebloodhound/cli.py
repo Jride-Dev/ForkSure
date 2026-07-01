@@ -12,6 +12,7 @@ from .reports import render_forks
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
+from .security.osv import scan_osv
 from .security.sast import scan_sast
 from .security.scoring import calculate_security_score
 from .security.secrets import scan_secrets
@@ -127,6 +128,23 @@ def security_deps(
     _render_security_findings("Dependency Hygiene Findings", findings)
 
 
+@security_app.command("osv")
+def security_osv(
+    path: Path = typer.Argument(
+        ...,
+        help="Local file or directory to scan.",
+        exists=True,
+        file_okay=True,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+    ),
+) -> None:
+    """Scan dependencies for vulnerabilities using OSV Scanner when available."""
+    findings = scan_osv(path)
+    _render_security_findings("OSV Dependency Vulnerability Findings", findings)
+
+
 @security_app.command("audit")
 def security_audit(
     path: Path = typer.Argument(
@@ -154,7 +172,7 @@ def _parse_rule_option(value: str | None) -> list[str] | None:
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
     table = Table(title=title, show_lines=False)
     table.add_column("Severity", style="bold")
-    table.add_column("Category")
+    table.add_column("Category", overflow="fold")
     table.add_column("File", overflow="fold")
     table.add_column("Line", justify="right")
     table.add_column("Title")
