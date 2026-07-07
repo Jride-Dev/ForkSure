@@ -158,6 +158,8 @@ def merge_rare_string_matches(candidates: list[dict[str, Any]], rare_matches: li
             "topics": [],
             "readme_status": "unknown",
             "readme_text_excerpt": None,
+            "readme_excerpt_truncated": False,
+            "readme_html_url": None,
             "score": match.get("score") or 0,
             "risk_level": match.get("risk_level") or "MEDIUM",
             "classification": "official-fork" if match.get("fork") else "possible-imposter",

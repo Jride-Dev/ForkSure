@@ -48,8 +48,48 @@ def test_imposter_html_report_includes_readme_excerpt_block(tmp_path) -> None:
     write_imposter_html_report("Jride-Dev/CodeBloodHound", [_candidate()], output_path)
 
     html = output_path.read_text(encoding="utf-8")
-    assert "README Excerpt" in html
-    assert '<div class="readme-excerpt">Mentions dependency scanning and provenance.</div>' in html
+    assert '<details class="readme-block" open>' in html
+    assert "<summary>README excerpt</summary>" in html
+    assert "<pre>Mentions dependency scanning and provenance.</pre>" in html
+
+
+def test_imposter_html_report_keeps_long_readme_excerpt_readable(tmp_path) -> None:
+    output_path = tmp_path / "imposters.html"
+    candidate = _candidate()
+    candidate["readme_text_excerpt"] = "First line\nSecond line with more evidence\nThird line"
+
+    write_imposter_html_report("Jride-Dev/CodeBloodHound", [candidate], output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "First line\nSecond line with more evidence\nThird line" in html
+    assert "white-space: pre-wrap" in html
+    assert "overflow: hidden" not in html
+    assert "line-clamp" not in html
+
+
+def test_imposter_html_report_marks_truncated_readme_excerpt(tmp_path) -> None:
+    output_path = tmp_path / "imposters.html"
+    candidate = _candidate()
+    candidate["readme_text_excerpt"] = "A" * 7000
+    candidate["readme_excerpt_truncated"] = True
+
+    write_imposter_html_report("Jride-Dev/CodeBloodHound", [candidate], output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "README excerpt truncated for report readability." in html
+    assert "A" * 100 in html
+    assert "Open README or repository" in html
+
+
+def test_imposter_html_report_handles_missing_readme_text(tmp_path) -> None:
+    output_path = tmp_path / "imposters.html"
+    candidate = _candidate()
+    candidate["readme_text_excerpt"] = None
+
+    write_imposter_html_report("Jride-Dev/CodeBloodHound", [candidate], output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "README unavailable or not fetched." in html
 
 
 def test_imposter_html_report_includes_rare_string_evidence(tmp_path) -> None:
@@ -118,6 +158,8 @@ def _candidate() -> dict:
         "description": "Supply chain scanner.",
         "readme_status": "found",
         "readme_text_excerpt": "Mentions dependency scanning and provenance.",
+        "readme_excerpt_truncated": False,
+        "readme_html_url": "https://github.com/other/CodeBloodHound/blob/main/README.md",
         "reasons": ["Manual review required."],
         "rare_string_matches": [
             {

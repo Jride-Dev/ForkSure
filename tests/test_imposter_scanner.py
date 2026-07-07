@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from codebloodhound.imposter_scanner import (
+    README_EXCERPT_LENGTH,
     classify_imposter_candidate,
     generate_name_variants,
     scan_imposters,
@@ -132,12 +133,26 @@ def test_scan_imposters_enriches_license_and_readme() -> None:
     assert candidates[0]["license_name"] == "MIT License"
     assert candidates[0]["readme_status"] == "found"
     assert "dependency scanning" in candidates[0]["readme_text_excerpt"]
+    assert candidates[0]["readme_excerpt_truncated"] is False
+    assert candidates[0]["readme_html_url"] == "https://github.com/other/CodeBloodHound/blob/main/README.md"
+
+
+def test_scan_imposters_marks_long_readme_excerpt_as_truncated() -> None:
+    readme_text = "First line\n" + ("A" * (README_EXCERPT_LENGTH + 100))
+    client = FakeSearchClient([_repo("other/CodeBloodHound", "CodeBloodHound")], enrich=True, readme_text=readme_text)
+
+    candidates = scan_imposters("Jride-Dev/CodeBloodHound", client)
+
+    assert candidates[0]["readme_excerpt_truncated"] is True
+    assert candidates[0]["readme_text_excerpt"].startswith("First line\n")
+    assert len(candidates[0]["readme_text_excerpt"]) <= README_EXCERPT_LENGTH
 
 
 class FakeSearchClient:
-    def __init__(self, results: list[dict[str, Any]], *, enrich: bool = False) -> None:
+    def __init__(self, results: list[dict[str, Any]], *, enrich: bool = False, readme_text: str | None = None) -> None:
         self.results = results
         self.enrich = enrich
+        self.readme_text = readme_text or "A dependency scanning and vulnerability provenance tool."
 
     def search_repositories(self, query: str, *, per_page: int = 20, max_pages: int = 1) -> list[dict[str, Any]]:
         return self.results
@@ -171,7 +186,7 @@ class FakeSearchClient:
             "path": "README.md",
             "html_url": f"https://github.com/{owner_repo}/blob/main/README.md",
             "download_url": f"https://raw.githubusercontent.com/{owner_repo}/main/README.md",
-            "content_text": "A dependency scanning and vulnerability provenance tool.",
+            "content_text": self.readme_text,
             "error": None,
         }
 

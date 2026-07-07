@@ -307,7 +307,32 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
       .reason-list li, .rare-list li {{
         margin: 6px 0;
       }}
-      .readme-excerpt, .matched-string {{
+      .readme-block {{
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: #f8fafc;
+        padding: 10px;
+      }}
+      .readme-block summary {{
+        cursor: pointer;
+        font-weight: 700;
+      }}
+      .readme-block pre {{
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+        margin: 10px 0 0;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }}
+      .readme-note {{
+        color: #475569;
+        margin: 10px 0 0;
+      }}
+      .readme-link {{
+        display: inline-block;
+        margin-top: 8px;
+      }}
+      .matched-string {{
         background: #f8fafc;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
@@ -406,11 +431,32 @@ def _reason_list(reasons: object) -> str:
 
 def _readme_section(candidate: dict) -> str:
     excerpt = candidate.get("readme_text_excerpt")
+    readme_url = str(candidate.get("readme_html_url") or candidate.get("html_url") or "")
+    readme_link = (
+        f'<a class="readme-link" href="{escape(readme_url, quote=True)}">Open README or repository</a>'
+        if readme_url
+        else ""
+    )
     if not excerpt:
-        return ""
+        return f"""          <section class="section">
+            <details class="readme-block" open>
+              <summary>README excerpt</summary>
+              <p class="readme-note">README unavailable or not fetched.</p>
+              {readme_link}
+            </details>
+          </section>"""
+    notice = (
+        '<p class="readme-note">README excerpt truncated for report readability.</p>'
+        if candidate.get("readme_excerpt_truncated")
+        else ""
+    )
     return f"""          <section class="section">
-            <h3>README Excerpt</h3>
-            <div class="readme-excerpt">{escape(str(excerpt))}</div>
+            <details class="readme-block" open>
+              <summary>README excerpt</summary>
+              <pre>{escape(str(excerpt))}</pre>
+              {notice}
+              {readme_link}
+            </details>
           </section>"""
 
 

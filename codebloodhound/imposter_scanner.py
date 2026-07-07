@@ -17,7 +17,7 @@ DOMAIN_TERMS = (
     "provenance",
     "code scanning",
 )
-README_EXCERPT_LENGTH = 360
+README_EXCERPT_LENGTH = 6000
 
 
 def generate_name_variants(repo_name: str) -> list[str]:
@@ -203,6 +203,8 @@ def _enrich_candidate(candidate: dict[str, Any], github_client: GitHubClient) ->
         "topics": candidate.get("topics") if isinstance(candidate.get("topics"), list) else [],
         "readme_status": "unknown",
         "readme_text_excerpt": None,
+        "readme_excerpt_truncated": False,
+        "readme_html_url": None,
     }
     full_name = enriched["full_name"]
 
@@ -222,7 +224,10 @@ def _enrich_candidate(candidate: dict[str, Any], github_client: GitHubClient) ->
             readme_data = {"found": False, "error": "README lookup failed."}
         if readme_data.get("found"):
             enriched["readme_status"] = "found"
-            enriched["readme_text_excerpt"] = _excerpt(str(readme_data.get("content_text") or ""))
+            enriched["readme_html_url"] = readme_data.get("html_url")
+            enriched["readme_text_excerpt"], enriched["readme_excerpt_truncated"] = _excerpt(
+                str(readme_data.get("content_text") or "")
+            )
         elif readme_data.get("error"):
             enriched["readme_status"] = "unknown"
         else:
@@ -245,13 +250,13 @@ def _matched_domain_terms(candidate: dict) -> list[str]:
     return matches
 
 
-def _excerpt(value: str) -> str | None:
-    compact = " ".join(value.split())
-    if not compact:
-        return None
-    if len(compact) <= README_EXCERPT_LENGTH:
-        return compact
-    return f"{compact[:README_EXCERPT_LENGTH].rstrip()}..."
+def _excerpt(value: str) -> tuple[str | None, bool]:
+    text = value.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return None, False
+    if len(text) <= README_EXCERPT_LENGTH:
+        return text, False
+    return text[:README_EXCERPT_LENGTH].rstrip(), True
 
 
 def _normalize_domain_text(value: str) -> str:
