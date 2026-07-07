@@ -9,6 +9,7 @@ from rich.table import Table
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .license_scanner import compare_licenses
+from .readme_scanner import compare_readme_attribution
 from .reports import render_forks
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
@@ -43,24 +44,40 @@ def forks(
         "--audit-license",
         help="Compare the source repository license against each fork license.",
     ),
+    audit_readme: bool = typer.Option(
+        False,
+        "--audit-readme",
+        help="Check whether fork READMEs preserve obvious upstream attribution.",
+    ),
 ) -> None:
     """List forks for a GitHub repository."""
     try:
-        if audit_license:
+        if audit_license or audit_readme:
             client = GitHubClient()
             fork_list = audit_forks(owner_repo, client=client)
-            source_license = client.get_repo_license(owner_repo)
-            license_results = {}
+            source_license = client.get_repo_license(owner_repo) if audit_license else None
+            source_readme = client.get_repo_readme(owner_repo) if audit_readme else None
+            license_results = {} if audit_license else None
+            readme_results = {} if audit_readme else None
             for fork in fork_list:
-                fork_license = client.get_repo_license(fork.full_name)
-                license_results[fork.full_name] = {
-                    "license": fork_license,
-                    "comparison": compare_licenses(source_license, fork_license),
-                }
+                if audit_license and source_license is not None and license_results is not None:
+                    fork_license = client.get_repo_license(fork.full_name)
+                    license_results[fork.full_name] = {
+                        "license": fork_license,
+                        "comparison": compare_licenses(source_license, fork_license),
+                    }
+                if audit_readme and source_readme is not None and readme_results is not None:
+                    fork_readme = client.get_repo_readme(fork.full_name)
+                    readme_results[fork.full_name] = {
+                        "readme": fork_readme,
+                        "comparison": compare_readme_attribution(owner_repo, source_readme, fork_readme),
+                    }
         else:
             fork_list = audit_forks(owner_repo)
             source_license = None
             license_results = None
+            source_readme = None
+            readme_results = None
     except InvalidOwnerRepoError as exc:
         console.print(f"[red]Invalid repository:[/red] {exc}")
         raise typer.Exit(code=2) from exc
@@ -79,6 +96,8 @@ def forks(
         console=console,
         source_license=source_license,
         license_results=license_results,
+        source_readme=source_readme,
+        readme_results=readme_results,
     )
 
 

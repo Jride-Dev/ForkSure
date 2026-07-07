@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 import re
 from dataclasses import dataclass
@@ -82,6 +84,27 @@ def _license_data(
     }
 
 
+def _readme_data(
+    *,
+    found: bool,
+    name: str | None = None,
+    path: str | None = None,
+    html_url: str | None = None,
+    download_url: str | None = None,
+    content_text: str | None = None,
+    error: str | None = None,
+) -> dict[str, bool | str | None]:
+    return {
+        "found": found,
+        "name": name,
+        "path": path,
+        "html_url": html_url,
+        "download_url": download_url,
+        "content_text": content_text,
+        "error": error,
+    }
+
+
 def parse_owner_repo(owner_repo: str) -> OwnerRepo:
     value = owner_repo.strip()
     match = OWNER_REPO_RE.fullmatch(value)
@@ -152,6 +175,34 @@ class GitHubClient:
             html_url=_optional_string(data.get("html_url")),
         )
 
+    def get_repo_readme(self, owner_repo: str) -> dict[str, bool | str | None]:
+        parsed = parse_owner_repo(owner_repo)
+        try:
+            data = self._request("GET", f"/repos/{parsed.owner}/{parsed.repo}/readme")
+        except GitHubNotFoundError:
+            return _readme_data(found=False)
+        except (GitHubRateLimitError, GitHubAPIError) as exc:
+            return _readme_data(found=False, error=str(exc))
+
+        if not isinstance(data, dict):
+            return _readme_data(found=False, error="Unexpected GitHub README response.")
+
+        content = data.get("content")
+        content_text = None
+        error = None
+        if isinstance(content, str):
+            content_text, error = _decode_base64_text(content)
+
+        return _readme_data(
+            found=True,
+            name=_optional_string(data.get("name")),
+            path=_optional_string(data.get("path")),
+            html_url=_optional_string(data.get("html_url")),
+            download_url=_optional_string(data.get("download_url")),
+            content_text=content_text,
+            error=error,
+        )
+
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {
             "Accept": "application/vnd.github+json",
@@ -210,6 +261,10 @@ def get_repo_license(owner_repo: str) -> dict[str, bool | str | None]:
     return GitHubClient().get_repo_license(owner_repo)
 
 
+def get_repo_readme(owner_repo: str) -> dict[str, bool | str | None]:
+    return GitHubClient().get_repo_readme(owner_repo)
+
+
 def _extract_error_message(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -234,3 +289,11 @@ def _optional_string(value: Any) -> str | None:
     if value is None:
         return None
     return str(value)
+
+
+def _decode_base64_text(value: str) -> tuple[str | None, str | None]:
+    try:
+        raw = base64.b64decode("".join(value.split()), validate=True)
+        return raw.decode("utf-8", errors="replace"), None
+    except (binascii.Error, ValueError) as exc:
+        return None, f"Could not decode README content: {exc}"

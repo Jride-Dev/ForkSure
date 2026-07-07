@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 
 from codebloodhound.github_client import GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
@@ -43,3 +45,46 @@ def test_get_repo_license_404_becomes_not_found(monkeypatch) -> None:
     assert license_data["name"] is None
     assert license_data["html_url"] is None
     assert license_data["error"] is None
+
+
+def test_get_repo_readme_404_becomes_not_found(monkeypatch) -> None:
+    client = GitHubClient(token="")
+
+    def raise_not_found(*args, **kwargs):
+        raise GitHubNotFoundError("Repository README not found.")
+
+    monkeypatch.setattr(client, "_request", raise_not_found)
+
+    readme_data = client.get_repo_readme("openai/codex")
+
+    assert readme_data["found"] is False
+    assert readme_data["name"] is None
+    assert readme_data["path"] is None
+    assert readme_data["html_url"] is None
+    assert readme_data["download_url"] is None
+    assert readme_data["content_text"] is None
+    assert readme_data["error"] is None
+
+
+def test_get_repo_readme_decodes_base64_content(monkeypatch) -> None:
+    client = GitHubClient(token="")
+    content = base64.b64encode(b"# Project\n\nUpstream: owner/repo\n").decode("ascii")
+
+    def fake_request(*args, **kwargs):
+        return {
+            "name": "README.md",
+            "path": "README.md",
+            "html_url": "https://github.com/owner/repo/blob/main/README.md",
+            "download_url": "https://raw.githubusercontent.com/owner/repo/main/README.md",
+            "content": content,
+        }
+
+    monkeypatch.setattr(client, "_request", fake_request)
+
+    readme_data = client.get_repo_readme("owner/repo")
+
+    assert readme_data["found"] is True
+    assert readme_data["name"] == "README.md"
+    assert readme_data["path"] == "README.md"
+    assert readme_data["content_text"] == "# Project\n\nUpstream: owner/repo\n"
+    assert readme_data["error"] is None
