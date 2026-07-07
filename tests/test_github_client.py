@@ -99,3 +99,14 @@ def test_search_repositories_handles_api_error_gracefully(monkeypatch) -> None:
     monkeypatch.setattr(client, "_request", raise_api_error)
 
     assert client.search_repositories("CodeBloodHound in:name") == []
+
+
+def test_search_code_handles_api_error_gracefully(monkeypatch) -> None:
+    client = GitHubClient(token="")
+
+    def raise_api_error(*args, **kwargs):
+        raise GitHubAPIError("Code search failed.")
+
+    monkeypatch.setattr(client, "_request", raise_api_error)
+
+    assert client.search_code('"rare phrase"') == []

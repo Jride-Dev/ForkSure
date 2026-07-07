@@ -12,6 +12,7 @@ from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .imposter_scanner import scan_imposters
 from .license_scanner import compare_licenses
+from .rare_string_scanner import merge_rare_string_matches, scan_rare_string_matches
 from .readme_scanner import compare_readme_attribution
 from .reports import IMPOSTER_DISCLAIMER, render_forks, write_imposter_html_report
 from .security.audit import run_security_audit
@@ -110,10 +111,16 @@ def imposters(
     html: bool = typer.Option(False, "--html", help="Generate an HTML report in the reports/ directory."),
     open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
     out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+    rare_strings: bool = typer.Option(False, "--rare-strings", help="Search GitHub code for rare source README phrases."),
+    max_rare_strings: int = typer.Option(5, "--max-rare-strings", min=1, help="Maximum rare strings to search."),
 ) -> None:
     """Search GitHub for possible name-squatting repository candidates."""
     try:
-        candidates = scan_imposters(owner_repo, GitHubClient())
+        client = GitHubClient()
+        candidates = scan_imposters(owner_repo, client)
+        if rare_strings:
+            rare_matches = scan_rare_string_matches(owner_repo, client, max_strings=max_rare_strings)
+            candidates = merge_rare_string_matches(candidates, rare_matches)
     except InvalidOwnerRepoError as exc:
         console.print(f"[red]Invalid repository:[/red] {exc}")
         raise typer.Exit(code=2) from exc

@@ -231,6 +231,34 @@ class GitHubClient:
 
         return repositories
 
+    def search_code(self, query: str, *, per_page: int = 10, max_pages: int = 1) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        safe_per_page = max(1, min(per_page, 100))
+        safe_max_pages = max(1, max_pages)
+
+        for page in range(1, safe_max_pages + 1):
+            try:
+                data = self._request(
+                    "GET",
+                    "/search/code",
+                    params={"q": query, "per_page": safe_per_page, "page": page},
+                )
+            except (GitHubRateLimitError, GitHubAPIError):
+                return results
+
+            if not isinstance(data, dict):
+                return results
+
+            items = data.get("items")
+            if not isinstance(items, list):
+                return results
+
+            results.extend(_normalize_code_search_item(item) for item in items if isinstance(item, dict))
+            if len(items) < safe_per_page:
+                return results
+
+        return results
+
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {
             "Accept": "application/vnd.github+json",
@@ -297,6 +325,10 @@ def search_repositories(query: str, *, per_page: int = 20, max_pages: int = 1) -
     return GitHubClient().search_repositories(query, per_page=per_page, max_pages=max_pages)
 
 
+def search_code(query: str, *, per_page: int = 10, max_pages: int = 1) -> list[dict[str, Any]]:
+    return GitHubClient().search_code(query, per_page=per_page, max_pages=max_pages)
+
+
 def _extract_error_message(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -350,6 +382,22 @@ def _normalize_repository_item(item: dict[str, Any]) -> dict[str, Any]:
         "license_key": _optional_string(license_info.get("key")) if isinstance(license_info, dict) else None,
         "license_name": _optional_string(license_info.get("name")) if isinstance(license_info, dict) else None,
         "topics": [str(topic) for topic in topics] if isinstance(topics, list) else [],
+    }
+
+
+def _normalize_code_search_item(item: dict[str, Any]) -> dict[str, Any]:
+    repository = item.get("repository")
+    repository_data = repository if isinstance(repository, dict) else {}
+    owner = repository_data.get("owner")
+    owner_login = owner.get("login") if isinstance(owner, dict) else None
+    return {
+        "name": _optional_string(item.get("name")) or "",
+        "path": _optional_string(item.get("path")) or "",
+        "html_url": _optional_string(item.get("html_url")) or "",
+        "repository_full_name": _optional_string(repository_data.get("full_name")) or "",
+        "repository_html_url": _optional_string(repository_data.get("html_url")) or "",
+        "repository_fork": bool(repository_data.get("fork", False)),
+        "repository_owner": _optional_string(owner_login) or "",
     }
 
 

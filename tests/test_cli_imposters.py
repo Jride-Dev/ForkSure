@@ -54,3 +54,36 @@ def test_cli_imposters_open_writes_and_opens_html_report(monkeypatch, tmp_path) 
     assert "HTML report written to" in result.output
     assert opened_urls
     assert opened_urls[0].startswith("file:")
+
+
+def test_cli_imposters_accepts_rare_strings(monkeypatch) -> None:
+    monkeypatch.setattr("codebloodhound.cli.scan_imposters", lambda owner_repo, github_client: [])
+    monkeypatch.setattr(
+        "codebloodhound.cli.scan_rare_string_matches",
+        lambda owner_repo, github_client, max_strings=5: [
+            {
+                "repository_full_name": "other/CodeBloodHound",
+                "repository_html_url": "https://github.com/other/CodeBloodHound",
+                "fork": False,
+                "rare_string_matches": [
+                    {
+                        "matched_string": "CodeBloodHound correlates fork provenance with license drift evidence.",
+                        "file_path": "README.md",
+                        "file_html_url": "https://github.com/other/CodeBloodHound/blob/main/README.md",
+                        "reason": "Rare source phrase found in candidate repository.",
+                    }
+                ],
+                "reason": "Rare source phrase found in candidate repository.",
+                "risk_level": "MEDIUM",
+                "score": 60,
+            }
+        ],
+    )
+    monkeypatch.setattr("codebloodhound.cli.console", Console(width=160))
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["imposters", "Jride-Dev/CodeBloodHound", "--rare-strings"])
+
+    assert result.exit_code == 0
+    assert "other/CodeBloodHound" in result.output
+    assert "Rare source phrase" in result.output

@@ -177,6 +177,7 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
             <th>License</th>
             <th>Description</th>
             <th>README</th>
+            <th>Rare String Evidence</th>
             <th>Reasons</th>
           </tr>
         </thead>
@@ -271,6 +272,7 @@ def _imposter_candidate_row(candidate: dict) -> str:
     url = str(candidate.get("html_url") or "")
     url_cell = f'<a href="{escape(url, quote=True)}">{escape(url)}</a>' if url else "-"
     readme_text = _format_candidate_readme(candidate)
+    rare_string_evidence = _format_rare_string_evidence(candidate)
     return f"""          <tr>
             <td>{escape(str(candidate.get("classification") or "unknown"))}</td>
             <td>{escape(str(candidate.get("risk_level") or "INFO"))}</td>
@@ -284,6 +286,7 @@ def _imposter_candidate_row(candidate: dict) -> str:
             <td>{escape(_format_candidate_license(candidate))}</td>
             <td>{escape(str(candidate.get("description") or "-"))}</td>
             <td>{escape(readme_text)}</td>
+            <td>{rare_string_evidence}</td>
             <td>{escape(reason_text)}</td>
           </tr>"""
 
@@ -313,3 +316,24 @@ def _format_candidate_readme(candidate: dict) -> str:
     if excerpt:
         return f"{status}: {excerpt}"
     return status
+
+
+def _format_rare_string_evidence(candidate: dict) -> str:
+    matches = candidate.get("rare_string_matches")
+    if not isinstance(matches, list) or not matches:
+        return "-"
+
+    items: list[str] = []
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        matched_string = escape(str(match.get("matched_string") or ""))
+        file_path = escape(str(match.get("file_path") or ""))
+        file_url = str(match.get("file_html_url") or "")
+        reason = escape(str(match.get("reason") or "Rare source phrase found in candidate repository."))
+        file_label = f'<a href="{escape(file_url, quote=True)}">{file_path}</a>' if file_url else file_path
+        items.append(f"<li><strong>{matched_string}</strong><br>{file_label}<br>{reason}</li>")
+
+    if not items:
+        return "-"
+    return "<ul>" + "".join(items) + "</ul>"
