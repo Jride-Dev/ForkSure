@@ -159,35 +159,11 @@ def write_imposter_html_report(owner_repo: str, candidates: list[dict], output_p
 
 
 def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: str) -> str:
-    rows = "\n".join(_imposter_candidate_row(candidate) for candidate in candidates)
+    cards = "\n".join(_imposter_candidate_card(candidate) for candidate in candidates)
     candidate_content = (
-        """
-      <table>
-        <thead>
-          <tr>
-            <th>Classification</th>
-            <th>Risk</th>
-            <th>Score</th>
-            <th>Repository</th>
-            <th>URL</th>
-            <th>Created</th>
-            <th>Pushed</th>
-            <th>Fork</th>
-            <th>Stars</th>
-            <th>License</th>
-            <th>Description</th>
-            <th>README</th>
-            <th>Rare String Evidence</th>
-            <th>Reasons</th>
-          </tr>
-        </thead>
-        <tbody>
-"""
-        + rows
-        + """
-        </tbody>
-      </table>
-"""
+        "      <section class=\"candidates\" aria-label=\"Imposter candidates\">\n"
+        + cards
+        + "      </section>\n"
         if candidates
         else "      <p class=\"empty\">No imposter candidates found.</p>\n"
     )
@@ -211,12 +187,19 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
         border: 1px solid #d8dee8;
         border-radius: 8px;
         margin: 0 auto;
-        max-width: 1180px;
+        max-width: 1100px;
         padding: 28px;
       }}
       h1 {{
         font-size: 28px;
         margin: 0 0 8px;
+      }}
+      h2, h3 {{
+        margin: 0;
+      }}
+      h3 {{
+        font-size: 15px;
+        margin-bottom: 8px;
       }}
       .meta, .disclaimer, .summary, .empty {{
         margin: 8px 0;
@@ -227,22 +210,6 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
         border-radius: 6px;
         padding: 10px 12px;
       }}
-      table {{
-        border-collapse: collapse;
-        margin-top: 20px;
-        width: 100%;
-      }}
-      th, td {{
-        border-bottom: 1px solid #e5e7eb;
-        padding: 10px 8px;
-        text-align: left;
-        vertical-align: top;
-      }}
-      th {{
-        background: #eef2f7;
-        font-size: 13px;
-        text-transform: uppercase;
-      }}
       code {{
         background: #eef2f7;
         border-radius: 4px;
@@ -250,6 +217,115 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
       }}
       a {{
         color: #075985;
+        overflow-wrap: anywhere;
+      }}
+      .candidates {{
+        display: grid;
+        gap: 18px;
+        margin-top: 22px;
+      }}
+      .candidate-card {{
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        padding: 18px;
+      }}
+      .candidate-header {{
+        align-items: flex-start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }}
+      .repo-link {{
+        font-size: 20px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }}
+      .badges {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+      }}
+      .badge {{
+        background: #eef2f7;
+        border: 1px solid #d8dee8;
+        border-radius: 999px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 8px;
+        white-space: nowrap;
+      }}
+      .risk-high {{
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }}
+      .risk-medium {{
+        background: #ffedd5;
+        border-color: #fed7aa;
+        color: #9a3412;
+      }}
+      .risk-low, .risk-info {{
+        background: #dcfce7;
+        border-color: #bbf7d0;
+        color: #166534;
+      }}
+      .metadata-grid {{
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        margin-top: 14px;
+      }}
+      .metadata-item {{
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 8px 10px;
+      }}
+      .metadata-label {{
+        color: #64748b;
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+      }}
+      .metadata-value {{
+        display: block;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }}
+      .section {{
+        margin-top: 16px;
+      }}
+      .description {{
+        overflow-wrap: anywhere;
+      }}
+      .reason-list, .rare-list {{
+        margin: 0;
+        padding-left: 20px;
+      }}
+      .reason-list li, .rare-list li {{
+        margin: 6px 0;
+      }}
+      .readme-excerpt, .matched-string {{
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow-wrap: anywhere;
+        padding: 10px;
+        white-space: pre-wrap;
+      }}
+      .matched-string {{
+        display: block;
+        margin: 6px 0;
+      }}
+      .evidence-file, .evidence-note {{
+        display: block;
+        overflow-wrap: anywhere;
+      }}
+      .evidence-note {{
+        color: #475569;
+        margin-top: 4px;
       }}
     </style>
   </head>
@@ -266,29 +342,108 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
 """
 
 
-def _imposter_candidate_row(candidate: dict) -> str:
-    reasons = candidate.get("reasons")
-    reason_text = "; ".join(str(reason) for reason in reasons) if isinstance(reasons, list) else "-"
+def _imposter_candidate_card(candidate: dict) -> str:
+    full_name = str(candidate.get("full_name") or "-")
     url = str(candidate.get("html_url") or "")
-    url_cell = f'<a href="{escape(url, quote=True)}">{escape(url)}</a>' if url else "-"
-    readme_text = _format_candidate_readme(candidate)
-    rare_string_evidence = _format_rare_string_evidence(candidate)
-    return f"""          <tr>
-            <td>{escape(str(candidate.get("classification") or "unknown"))}</td>
-            <td>{escape(str(candidate.get("risk_level") or "INFO"))}</td>
-            <td>{escape(str(candidate.get("score") or 0))}</td>
-            <td>{escape(str(candidate.get("full_name") or "-"))}</td>
-            <td>{url_cell}</td>
-            <td>{escape(_format_candidate_date(candidate.get("created_at")))}</td>
-            <td>{escape(_format_candidate_date(candidate.get("pushed_at")))}</td>
-            <td>{"yes" if candidate.get("fork") else "no"}</td>
-            <td>{escape(str(candidate.get("stargazers_count") or 0))}</td>
-            <td>{escape(_format_candidate_license(candidate))}</td>
-            <td>{escape(str(candidate.get("description") or "-"))}</td>
-            <td>{escape(readme_text)}</td>
-            <td>{rare_string_evidence}</td>
-            <td>{escape(reason_text)}</td>
-          </tr>"""
+    link = (
+        f'<a class="repo-link" href="{escape(url, quote=True)}">{escape(full_name)}</a>'
+        if url
+        else f'<span class="repo-link">{escape(full_name)}</span>'
+    )
+    risk = str(candidate.get("risk_level") or "INFO")
+    risk_class = "".join(character for character in risk.casefold() if character.isalnum() or character == "-")
+    classification = str(candidate.get("classification") or "unknown")
+    description = str(candidate.get("description") or "").strip()
+    description_html = f"""
+        <section class="section">
+          <h3>Description</h3>
+          <p class="description">{escape(description)}</p>
+        </section>""" if description else ""
+    readme_html = _readme_section(candidate)
+    rare_html = _rare_string_section(candidate)
+    reasons_html = _reason_list(candidate.get("reasons"))
+    return f"""        <article class="candidate-card">
+          <header class="candidate-header">
+            {link}
+            <div class="badges">
+              <span class="badge risk-{escape(risk_class or "info")}">Risk: {escape(risk)}</span>
+              <span class="badge">Classification: {escape(classification)}</span>
+              <span class="badge">Score: {escape(str(candidate.get("score") or 0))}</span>
+              <span class="badge">Fork: {"yes" if candidate.get("fork") else "no"}</span>
+              <span class="badge">Stars: {escape(str(candidate.get("stargazers_count") or 0))}</span>
+            </div>
+          </header>
+          <section class="metadata-grid" aria-label="Candidate metadata">
+            {_metadata_item("Created", _format_candidate_date(candidate.get("created_at")))}
+            {_metadata_item("Last pushed", _format_candidate_date(candidate.get("pushed_at")))}
+            {_metadata_item("Default branch", str(candidate.get("default_branch") or "-"))}
+            {_metadata_item("License", _format_candidate_license(candidate))}
+            {_metadata_item("README", str(candidate.get("readme_status") or "unknown"))}
+          </section>
+{description_html}
+          <section class="section">
+            <h3>Reasons</h3>
+            {reasons_html}
+          </section>
+{readme_html}
+{rare_html}
+        </article>"""
+
+
+def _metadata_item(label: str, value: str) -> str:
+    return f"""            <div class="metadata-item">
+              <span class="metadata-label">{escape(label)}</span>
+              <span class="metadata-value">{escape(value)}</span>
+            </div>"""
+
+
+def _reason_list(reasons: object) -> str:
+    if not isinstance(reasons, list) or not reasons:
+        return "<p>-</p>"
+    items = "".join(f"<li>{escape(str(reason))}</li>" for reason in reasons)
+    return f'<ul class="reason-list">{items}</ul>'
+
+
+def _readme_section(candidate: dict) -> str:
+    excerpt = candidate.get("readme_text_excerpt")
+    if not excerpt:
+        return ""
+    return f"""          <section class="section">
+            <h3>README Excerpt</h3>
+            <div class="readme-excerpt">{escape(str(excerpt))}</div>
+          </section>"""
+
+
+def _rare_string_section(candidate: dict) -> str:
+    matches = candidate.get("rare_string_matches")
+    if not isinstance(matches, list) or not matches:
+        return ""
+
+    items: list[str] = []
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        matched_string = escape(str(match.get("matched_string") or ""))
+        file_path = escape(str(match.get("file_path") or ""))
+        file_url = str(match.get("file_html_url") or "")
+        reason = str(match.get("reason") or "").strip()
+        file_label = f'<a href="{escape(file_url, quote=True)}">{file_path}</a>' if file_url else file_path
+        reason_html = f'<span class="evidence-note">Reason: {escape(reason)}</span>' if reason else ""
+        items.append(
+            f"""              <li>
+                <span class="matched-string">{matched_string}</span>
+                <span class="evidence-file">{file_label}</span>
+                {reason_html}
+              </li>"""
+        )
+    if not items:
+        return ""
+    return f"""          <section class="section">
+            <h3>Rare String Evidence</h3>
+            <ul class="rare-list">
+{"".join(items)}
+            </ul>
+          </section>"""
 
 
 def _format_candidate_date(value: object) -> str:
@@ -308,32 +463,3 @@ def _format_candidate_license(candidate: dict) -> str:
     if name:
         return str(name)
     return "-"
-
-
-def _format_candidate_readme(candidate: dict) -> str:
-    status = str(candidate.get("readme_status") or "unknown")
-    excerpt = candidate.get("readme_text_excerpt")
-    if excerpt:
-        return f"{status}: {excerpt}"
-    return status
-
-
-def _format_rare_string_evidence(candidate: dict) -> str:
-    matches = candidate.get("rare_string_matches")
-    if not isinstance(matches, list) or not matches:
-        return "-"
-
-    items: list[str] = []
-    for match in matches:
-        if not isinstance(match, dict):
-            continue
-        matched_string = escape(str(match.get("matched_string") or ""))
-        file_path = escape(str(match.get("file_path") or ""))
-        file_url = str(match.get("file_html_url") or "")
-        reason = escape(str(match.get("reason") or "Rare source phrase found in candidate repository."))
-        file_label = f'<a href="{escape(file_url, quote=True)}">{file_path}</a>' if file_url else file_path
-        items.append(f"<li><strong>{matched_string}</strong><br>{file_label}<br>{reason}</li>")
-
-    if not items:
-        return "-"
-    return "<ul>" + "".join(items) + "</ul>"
