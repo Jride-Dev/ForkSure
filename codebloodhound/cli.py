@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import webbrowser
 from pathlib import Path
 
 import typer
+from rich import box
 from rich.console import Console
 from rich.table import Table
 
@@ -11,7 +13,7 @@ from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, Gi
 from .imposter_scanner import scan_imposters
 from .license_scanner import compare_licenses
 from .readme_scanner import compare_readme_attribution
-from .reports import render_forks
+from .reports import IMPOSTER_DISCLAIMER, render_forks, write_imposter_html_report
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
@@ -103,7 +105,12 @@ def forks(
 
 
 @app.command()
-def imposters(owner_repo: str = typer.Argument(..., help="Repository in owner/repo format.")) -> None:
+def imposters(
+    owner_repo: str = typer.Argument(..., help="Repository in owner/repo format."),
+    html: bool = typer.Option(False, "--html", help="Generate an HTML report in the reports/ directory."),
+    open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
+    out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+) -> None:
     """Search GitHub for possible name-squatting repository candidates."""
     try:
         candidates = scan_imposters(owner_repo, GitHubClient())
@@ -118,6 +125,11 @@ def imposters(owner_repo: str = typer.Argument(..., help="Repository in owner/re
         raise typer.Exit(code=1) from exc
 
     _render_imposter_candidates(candidates)
+    if html or open_report or out is not None:
+        report_path = write_imposter_html_report(owner_repo, candidates, out or _default_imposter_report_path(owner_repo))
+        console.print(f"HTML report written to: {report_path}")
+        if open_report:
+            _open_html_report(report_path)
 
 
 @security_app.command("scripts")
@@ -239,16 +251,16 @@ def _render_imposter_candidates(candidates: list[dict]) -> None:
         console.print("[yellow]No imposter candidates found.[/yellow]")
         return
 
-    console.print("[yellow]These are similarity candidates for manual review, not accusations.[/yellow]")
-    table = Table(title="Imposter Repository Candidates", show_lines=False)
-    table.add_column("Risk", style="bold", no_wrap=True)
-    table.add_column("Score", justify="right", no_wrap=True)
-    table.add_column("Repository", overflow="ellipsis", no_wrap=True)
-    table.add_column("Fork", no_wrap=True)
-    table.add_column("Stars", justify="right", no_wrap=True)
-    table.add_column("Pushed", no_wrap=True)
-    table.add_column("Reason", overflow="ellipsis", no_wrap=True)
-    table.add_column("URL", overflow="ellipsis", no_wrap=True)
+    console.print(f"[yellow]{IMPOSTER_DISCLAIMER}[/yellow]")
+    table = Table(title="Imposter Repository Candidates", show_lines=False, box=box.SIMPLE, collapse_padding=True)
+    table.add_column("Risk", style="bold", no_wrap=True, width=6)
+    table.add_column("Score", justify="right", no_wrap=True, width=5)
+    table.add_column("Repository", overflow="ellipsis", no_wrap=True, max_width=24)
+    table.add_column("Fork", no_wrap=True, width=4)
+    table.add_column("Stars", justify="right", no_wrap=True, width=5)
+    table.add_column("Pushed", no_wrap=True, width=10)
+    table.add_column("Reason", overflow="ellipsis", no_wrap=True, max_width=36)
+    table.add_column("URL", overflow="ellipsis", no_wrap=True, max_width=30)
 
     for candidate in candidates:
         reasons = candidate.get("reasons")
@@ -298,6 +310,22 @@ def _format_date(value: object) -> str:
         return "-"
     text = str(value)
     return text.split("T", 1)[0] if text else "-"
+
+
+def _default_imposter_report_path(owner_repo: str) -> Path:
+    safe_name = "".join(char.lower() if char.isalnum() else "-" for char in owner_repo).strip("-")
+    while "--" in safe_name:
+        safe_name = safe_name.replace("--", "-")
+    return Path("reports") / f"{safe_name or 'imposter-scan'}-imposters.html"
+
+
+def _open_html_report(report_path: Path) -> None:
+    try:
+        opened = webbrowser.open(report_path.resolve().as_uri())
+    except Exception:
+        opened = False
+    if not opened:
+        console.print("[yellow]Could not open HTML report automatically.[/yellow]")
 
 
 if __name__ == "__main__":

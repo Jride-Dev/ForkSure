@@ -3,3 +3,4 @@ __pycache__/
 .pytest-tmp/
 tmp_pytest_run/
 .cbh-test-tmp/
+reports/

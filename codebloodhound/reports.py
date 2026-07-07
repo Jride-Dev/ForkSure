@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from html import escape
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from rich.console import Console
@@ -8,6 +10,9 @@ from rich.table import Table
 
 from .github_client import GitHubRepo
 from .license_scanner import format_license
+
+
+IMPOSTER_DISCLAIMER = "These are similarity candidates for manual review, not accusations."
 
 
 def render_forks(
@@ -143,3 +148,137 @@ def _format_readme(readme_data: Mapping[str, Any] | None) -> str:
     if not readme_data.get("found"):
         return "missing"
     return str(readme_data.get("path") or readme_data.get("name") or "found")
+
+
+def write_imposter_html_report(owner_repo: str, candidates: list[dict], output_path: str | Path) -> Path:
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+    path.write_text(_imposter_report_html(owner_repo, candidates, timestamp), encoding="utf-8")
+    return path
+
+
+def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: str) -> str:
+    rows = "\n".join(_imposter_candidate_row(candidate) for candidate in candidates)
+    candidate_content = (
+        """
+      <table>
+        <thead>
+          <tr>
+            <th>Risk</th>
+            <th>Score</th>
+            <th>Repository</th>
+            <th>Fork</th>
+            <th>Stars</th>
+            <th>Pushed</th>
+            <th>Reasons</th>
+            <th>URL</th>
+          </tr>
+        </thead>
+        <tbody>
+"""
+        + rows
+        + """
+        </tbody>
+      </table>
+"""
+        if candidates
+        else "      <p class=\"empty\">No imposter candidates found.</p>\n"
+    )
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CodeBloodHound Imposter Scan</title>
+    <style>
+      body {{
+        background: #f7f8fa;
+        color: #1f2937;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 32px;
+      }}
+      main {{
+        background: #ffffff;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 28px;
+      }}
+      h1 {{
+        font-size: 28px;
+        margin: 0 0 8px;
+      }}
+      .meta, .disclaimer, .summary, .empty {{
+        margin: 8px 0;
+      }}
+      .disclaimer {{
+        background: #fff7df;
+        border: 1px solid #ead28a;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }}
+      table {{
+        border-collapse: collapse;
+        margin-top: 20px;
+        width: 100%;
+      }}
+      th, td {{
+        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+      }}
+      th {{
+        background: #eef2f7;
+        font-size: 13px;
+        text-transform: uppercase;
+      }}
+      code {{
+        background: #eef2f7;
+        border-radius: 4px;
+        padding: 2px 4px;
+      }}
+      a {{
+        color: #075985;
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>CodeBloodHound Imposter Scan</h1>
+      <p class="meta"><strong>Target repo:</strong> <code>{escape(owner_repo)}</code></p>
+      <p class="meta"><strong>Scan timestamp:</strong> {escape(timestamp)}</p>
+      <p class="disclaimer">{escape(IMPOSTER_DISCLAIMER)}</p>
+      <p class="summary"><strong>Summary count:</strong> {len(candidates)}</p>
+{candidate_content}    </main>
+  </body>
+</html>
+"""
+
+
+def _imposter_candidate_row(candidate: dict) -> str:
+    reasons = candidate.get("reasons")
+    reason_text = "; ".join(str(reason) for reason in reasons) if isinstance(reasons, list) else "-"
+    url = str(candidate.get("html_url") or "")
+    url_cell = f'<a href="{escape(url, quote=True)}">{escape(url)}</a>' if url else "-"
+    return f"""          <tr>
+            <td>{escape(str(candidate.get("risk_level") or "INFO"))}</td>
+            <td>{escape(str(candidate.get("score") or 0))}</td>
+            <td>{escape(str(candidate.get("full_name") or "-"))}</td>
+            <td>{"yes" if candidate.get("fork") else "no"}</td>
+            <td>{escape(str(candidate.get("stargazers_count") or 0))}</td>
+            <td>{escape(_format_candidate_date(candidate.get("pushed_at")))}</td>
+            <td>{escape(reason_text)}</td>
+            <td>{url_cell}</td>
+          </tr>"""
+
+
+def _format_candidate_date(value: object) -> str:
+    if value is None:
+        return "-"
+    text = str(value)
+    return text.split("T", 1)[0] if text else "-"
