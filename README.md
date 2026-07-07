@@ -1,6 +1,6 @@
-# CodeBloodHound
+# ForkSure
 
-CodeBloodHound is a Python CLI for GitHub repository provenance, fork audits,
+ForkSure is a Python CLI for GitHub repository provenance, fork audits,
 imposter repository checks, and license drift scanning.
 
 ## MVP
@@ -27,4 +27,4 @@ resolved dependency graph.
 
 ## License
 
-CodeBloodHound is licensed under the MIT License. See [LICENSE](LICENSE).
+ForkSure is licensed under the MIT License. See [LICENSE](LICENSE).
