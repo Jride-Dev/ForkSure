@@ -24,3 +24,7 @@ python -m pytest -q
 
 `uv.lock` is committed so dependency scanners such as Aikido can inspect the
 resolved dependency graph.
+
+## License
+
+CodeBloodHound is licensed under the MIT License. See [LICENSE](LICENSE).
