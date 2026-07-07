@@ -7,7 +7,8 @@ from rich.console import Console
 from rich.table import Table
 
 from .fork_auditor import audit_forks
-from .github_client import GitHubAPIError, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
+from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
+from .license_scanner import compare_licenses
 from .reports import render_forks
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
@@ -35,10 +36,31 @@ def main() -> None:
 
 
 @app.command()
-def forks(owner_repo: str = typer.Argument(..., help="Repository in owner/repo format.")) -> None:
+def forks(
+    owner_repo: str = typer.Argument(..., help="Repository in owner/repo format."),
+    audit_license: bool = typer.Option(
+        False,
+        "--audit-license",
+        help="Compare the source repository license against each fork license.",
+    ),
+) -> None:
     """List forks for a GitHub repository."""
     try:
-        fork_list = audit_forks(owner_repo)
+        if audit_license:
+            client = GitHubClient()
+            fork_list = audit_forks(owner_repo, client=client)
+            source_license = client.get_repo_license(owner_repo)
+            license_results = {}
+            for fork in fork_list:
+                fork_license = client.get_repo_license(fork.full_name)
+                license_results[fork.full_name] = {
+                    "license": fork_license,
+                    "comparison": compare_licenses(source_license, fork_license),
+                }
+        else:
+            fork_list = audit_forks(owner_repo)
+            source_license = None
+            license_results = None
     except InvalidOwnerRepoError as exc:
         console.print(f"[red]Invalid repository:[/red] {exc}")
         raise typer.Exit(code=2) from exc
@@ -52,7 +74,12 @@ def forks(owner_repo: str = typer.Argument(..., help="Repository in owner/repo f
         console.print(f"[red]GitHub error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    render_forks(fork_list, console=console)
+    render_forks(
+        fork_list,
+        console=console,
+        source_license=source_license,
+        license_results=license_results,
+    )
 
 
 @security_app.command("scripts")

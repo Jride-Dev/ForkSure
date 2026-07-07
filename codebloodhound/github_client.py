@@ -63,6 +63,25 @@ class GitHubRepo(BaseModel):
         return self.stargazers_count
 
 
+def _license_data(
+    *,
+    found: bool,
+    key: str | None = None,
+    spdx_id: str | None = None,
+    name: str | None = None,
+    html_url: str | None = None,
+    error: str | None = None,
+) -> dict[str, bool | str | None]:
+    return {
+        "found": found,
+        "key": key,
+        "spdx_id": spdx_id,
+        "name": name,
+        "html_url": html_url,
+        "error": error,
+    }
+
+
 def parse_owner_repo(owner_repo: str) -> OwnerRepo:
     value = owner_repo.strip()
     match = OWNER_REPO_RE.fullmatch(value)
@@ -108,6 +127,30 @@ class GitHubClient:
             if len(data) < per_page:
                 return forks
             page += 1
+
+    def get_repo_license(self, owner_repo: str) -> dict[str, bool | str | None]:
+        parsed = parse_owner_repo(owner_repo)
+        try:
+            data = self._request("GET", f"/repos/{parsed.owner}/{parsed.repo}/license")
+        except GitHubNotFoundError:
+            return _license_data(found=False)
+        except (GitHubRateLimitError, GitHubAPIError) as exc:
+            return _license_data(found=False, error=str(exc))
+
+        if not isinstance(data, dict):
+            return _license_data(found=False, error="Unexpected GitHub license response.")
+
+        license_info = data.get("license")
+        if not isinstance(license_info, dict):
+            return _license_data(found=False)
+
+        return _license_data(
+            found=True,
+            key=_optional_string(license_info.get("key")),
+            spdx_id=_optional_string(license_info.get("spdx_id")),
+            name=_optional_string(license_info.get("name")),
+            html_url=_optional_string(data.get("html_url")),
+        )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {
@@ -163,6 +206,10 @@ def list_forks(owner_repo: str) -> list[GitHubRepo]:
     return GitHubClient().list_forks(owner_repo)
 
 
+def get_repo_license(owner_repo: str) -> dict[str, bool | str | None]:
+    return GitHubClient().get_repo_license(owner_repo)
+
+
 def _extract_error_message(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -181,3 +228,9 @@ def _format_rate_limit_reset(value: str | None) -> str | None:
     except ValueError:
         return None
     return reset.isoformat()
+
+
+def _optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
