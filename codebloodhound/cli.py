@@ -255,12 +255,11 @@ def _render_imposter_candidates(candidates: list[dict]) -> None:
     table = Table(title="Imposter Repository Candidates", show_lines=False, box=box.SIMPLE, collapse_padding=True)
     table.add_column("Risk", style="bold", no_wrap=True, width=6)
     table.add_column("Score", justify="right", no_wrap=True, width=5)
-    table.add_column("Repository", overflow="ellipsis", no_wrap=True, max_width=24)
+    table.add_column("Classification", overflow="ellipsis", no_wrap=True, max_width=22)
     table.add_column("Fork", no_wrap=True, width=4)
     table.add_column("Stars", justify="right", no_wrap=True, width=5)
-    table.add_column("Pushed", no_wrap=True, width=10)
+    table.add_column("Repository", overflow="ellipsis", no_wrap=True, max_width=28)
     table.add_column("Reason", overflow="ellipsis", no_wrap=True, max_width=36)
-    table.add_column("URL", overflow="ellipsis", no_wrap=True, max_width=30)
 
     for candidate in candidates:
         reasons = candidate.get("reasons")
@@ -268,12 +267,11 @@ def _render_imposter_candidates(candidates: list[dict]) -> None:
         table.add_row(
             str(candidate.get("risk_level") or "INFO"),
             str(candidate.get("score") or 0),
-            str(candidate.get("full_name") or "-"),
+            str(candidate.get("classification") or "unknown"),
             "yes" if candidate.get("fork") else "no",
             str(candidate.get("stargazers_count") or 0),
-            _format_date(candidate.get("pushed_at")),
+            str(candidate.get("full_name") or "-"),
             reason,
-            str(candidate.get("html_url") or "-"),
         )
 
     console.print(table)
@@ -303,13 +301,6 @@ def _render_security_findings(title: str, findings: list[SecurityFinding]) -> No
         f"Risk level: [bold]{score['risk_level']}[/bold] "
         f"Findings: {score['finding_count']}"
     )
-
-
-def _format_date(value: object) -> str:
-    if value is None:
-        return "-"
-    text = str(value)
-    return text.split("T", 1)[0] if text else "-"
 
 
 def _default_imposter_report_path(owner_repo: str) -> Path:

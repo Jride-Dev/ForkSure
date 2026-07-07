@@ -334,6 +334,8 @@ def _decode_base64_text(value: str) -> tuple[str | None, str | None]:
 def _normalize_repository_item(item: dict[str, Any]) -> dict[str, Any]:
     owner = item.get("owner")
     owner_login = owner.get("login") if isinstance(owner, dict) else None
+    license_info = item.get("license")
+    topics = item.get("topics")
     return {
         "full_name": _optional_string(item.get("full_name")) or "",
         "name": _optional_string(item.get("name")) or "",
@@ -345,6 +347,9 @@ def _normalize_repository_item(item: dict[str, Any]) -> dict[str, Any]:
         "pushed_at": _optional_string(item.get("pushed_at")),
         "stargazers_count": _optional_int(item.get("stargazers_count")),
         "default_branch": _optional_string(item.get("default_branch")) or "",
+        "license_key": _optional_string(license_info.get("key")) if isinstance(license_info, dict) else None,
+        "license_name": _optional_string(license_info.get("name")) if isinstance(license_info, dict) else None,
+        "topics": [str(topic) for topic in topics] if isinstance(topics, list) else [],
     }
 
 

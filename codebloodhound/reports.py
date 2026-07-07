@@ -165,14 +165,19 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
       <table>
         <thead>
           <tr>
+            <th>Classification</th>
             <th>Risk</th>
             <th>Score</th>
             <th>Repository</th>
+            <th>URL</th>
+            <th>Created</th>
+            <th>Pushed</th>
             <th>Fork</th>
             <th>Stars</th>
-            <th>Pushed</th>
+            <th>License</th>
+            <th>Description</th>
+            <th>README</th>
             <th>Reasons</th>
-            <th>URL</th>
           </tr>
         </thead>
         <tbody>
@@ -265,15 +270,21 @@ def _imposter_candidate_row(candidate: dict) -> str:
     reason_text = "; ".join(str(reason) for reason in reasons) if isinstance(reasons, list) else "-"
     url = str(candidate.get("html_url") or "")
     url_cell = f'<a href="{escape(url, quote=True)}">{escape(url)}</a>' if url else "-"
+    readme_text = _format_candidate_readme(candidate)
     return f"""          <tr>
+            <td>{escape(str(candidate.get("classification") or "unknown"))}</td>
             <td>{escape(str(candidate.get("risk_level") or "INFO"))}</td>
             <td>{escape(str(candidate.get("score") or 0))}</td>
             <td>{escape(str(candidate.get("full_name") or "-"))}</td>
+            <td>{url_cell}</td>
+            <td>{escape(_format_candidate_date(candidate.get("created_at")))}</td>
+            <td>{escape(_format_candidate_date(candidate.get("pushed_at")))}</td>
             <td>{"yes" if candidate.get("fork") else "no"}</td>
             <td>{escape(str(candidate.get("stargazers_count") or 0))}</td>
-            <td>{escape(_format_candidate_date(candidate.get("pushed_at")))}</td>
+            <td>{escape(_format_candidate_license(candidate))}</td>
+            <td>{escape(str(candidate.get("description") or "-"))}</td>
+            <td>{escape(readme_text)}</td>
             <td>{escape(reason_text)}</td>
-            <td>{url_cell}</td>
           </tr>"""
 
 
@@ -282,3 +293,23 @@ def _format_candidate_date(value: object) -> str:
         return "-"
     text = str(value)
     return text.split("T", 1)[0] if text else "-"
+
+
+def _format_candidate_license(candidate: dict) -> str:
+    key = candidate.get("license_key")
+    name = candidate.get("license_name")
+    if key and name:
+        return f"{key} ({name})"
+    if key:
+        return str(key)
+    if name:
+        return str(name)
+    return "-"
+
+
+def _format_candidate_readme(candidate: dict) -> str:
+    status = str(candidate.get("readme_status") or "unknown")
+    excerpt = candidate.get("readme_text_excerpt")
+    if excerpt:
+        return f"{status}: {excerpt}"
+    return status

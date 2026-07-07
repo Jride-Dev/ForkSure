@@ -8,6 +8,16 @@ from .github_client import GitHubClient, parse_owner_repo
 
 
 RISK_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
+DOMAIN_TERMS = (
+    "supply chain",
+    "sast",
+    "secrets",
+    "dependency scanning",
+    "vulnerability",
+    "provenance",
+    "code scanning",
+)
+README_EXCERPT_LENGTH = 360
 
 
 def generate_name_variants(repo_name: str) -> list[str]:
@@ -71,6 +81,66 @@ def score_name_similarity(target_name: str, candidate_name: str, *, fork: bool =
     }
 
 
+def classify_imposter_candidate(target_owner_repo: str, candidate: dict) -> dict[str, Any]:
+    source = parse_owner_repo(target_owner_repo)
+    candidate_name = str(candidate.get("name") or str(candidate.get("full_name") or "").split("/")[-1])
+    score = int(candidate.get("score") or 0)
+    exact_name = candidate_name == source.repo
+    normalized_match = _normalize_name(candidate_name) == _normalize_name(source.repo)
+    same_domain_terms = _matched_domain_terms(candidate)
+    reasons: list[str] = []
+
+    if candidate.get("fork"):
+        return {
+            "classification": "official-fork",
+            "risk_level": "INFO",
+            "reasons": ["GitHub marks this candidate as a fork, lowering independent name-collision risk."],
+        }
+
+    if exact_name or normalized_match:
+        reasons.append("Repository name matches the target name.")
+        if same_domain_terms:
+            reasons.append(f"Description, README, or topics include related security terms: {', '.join(same_domain_terms)}.")
+            reasons.append("Manual review is required to determine whether the similarity is expected.")
+            return {
+                "classification": "possible-imposter",
+                "risk_level": "HIGH",
+                "reasons": reasons,
+            }
+        return {
+            "classification": "name-collision",
+            "risk_level": "LOW",
+            "reasons": reasons + ["No same-domain scanner language was found in available metadata."],
+        }
+
+    if same_domain_terms:
+        return {
+            "classification": "same-domain-candidate",
+            "risk_level": "MEDIUM",
+            "reasons": [f"Metadata includes related security terms: {', '.join(same_domain_terms)}."],
+        }
+
+    if score < 50:
+        return {
+            "classification": "weak-similarity",
+            "risk_level": "LOW",
+            "reasons": ["Name similarity is weak; treat as a low-priority candidate."],
+        }
+
+    if score >= 50:
+        return {
+            "classification": "name-collision",
+            "risk_level": "LOW",
+            "reasons": ["Name similarity is present, but available metadata does not show same-domain scanner language."],
+        }
+
+    return {
+        "classification": "unknown",
+        "risk_level": "INFO",
+        "reasons": ["Available metadata is not enough to classify this candidate."],
+    }
+
+
 def scan_imposters(owner_repo: str, github_client: GitHubClient) -> list[dict[str, Any]]:
     source = parse_owner_repo(owner_repo)
     source_full_name = source.slug.casefold()
@@ -85,15 +155,17 @@ def scan_imposters(owner_repo: str, github_client: GitHubClient) -> list[dict[st
 
     candidates: list[dict[str, Any]] = []
     for item in candidates_by_full_name.values():
-        score = score_name_similarity(source.repo, str(item.get("name") or ""), fork=bool(item.get("fork")))
-        candidates.append(
-            {
-                **item,
-                "score": score["score"],
-                "risk_level": score["risk_level"],
-                "reasons": score["reasons"],
-            }
-        )
+        enriched = _enrich_candidate(item, github_client)
+        score = score_name_similarity(source.repo, str(enriched.get("name") or ""), fork=bool(enriched.get("fork")))
+        enriched["score"] = score["score"]
+        enriched["name_similarity_risk_level"] = score["risk_level"]
+        enriched["name_similarity_reasons"] = score["reasons"]
+        classification = classify_imposter_candidate(owner_repo, enriched)
+        enriched["classification"] = classification["classification"]
+        enriched["risk_level"] = classification["risk_level"]
+        enriched["classification_reasons"] = classification["reasons"]
+        enriched["reasons"] = _dedupe_preserving_order([*classification["reasons"], *score["reasons"]])
+        candidates.append(enriched)
 
     return sorted(
         candidates,
@@ -112,6 +184,78 @@ def _split_name_tokens(value: str) -> list[str]:
     for part in parts:
         tokens.extend(re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|\d+", part))
     return tokens or [value]
+
+
+def _enrich_candidate(candidate: dict[str, Any], github_client: GitHubClient) -> dict[str, Any]:
+    enriched = {
+        "full_name": str(candidate.get("full_name") or ""),
+        "name": str(candidate.get("name") or ""),
+        "owner": str(candidate.get("owner") or ""),
+        "html_url": str(candidate.get("html_url") or ""),
+        "description": candidate.get("description"),
+        "fork": bool(candidate.get("fork", False)),
+        "created_at": candidate.get("created_at"),
+        "pushed_at": candidate.get("pushed_at"),
+        "stargazers_count": int(candidate.get("stargazers_count") or 0),
+        "default_branch": str(candidate.get("default_branch") or ""),
+        "license_key": candidate.get("license_key"),
+        "license_name": candidate.get("license_name"),
+        "topics": candidate.get("topics") if isinstance(candidate.get("topics"), list) else [],
+        "readme_status": "unknown",
+        "readme_text_excerpt": None,
+    }
+    full_name = enriched["full_name"]
+
+    if full_name and hasattr(github_client, "get_repo_license") and not enriched["license_key"]:
+        try:
+            license_data = github_client.get_repo_license(full_name)
+        except Exception:
+            license_data = {"found": False, "error": "License lookup failed."}
+        if license_data.get("found"):
+            enriched["license_key"] = license_data.get("key")
+            enriched["license_name"] = license_data.get("name")
+
+    if full_name and hasattr(github_client, "get_repo_readme"):
+        try:
+            readme_data = github_client.get_repo_readme(full_name)
+        except Exception:
+            readme_data = {"found": False, "error": "README lookup failed."}
+        if readme_data.get("found"):
+            enriched["readme_status"] = "found"
+            enriched["readme_text_excerpt"] = _excerpt(str(readme_data.get("content_text") or ""))
+        elif readme_data.get("error"):
+            enriched["readme_status"] = "unknown"
+        else:
+            enriched["readme_status"] = "missing"
+
+    return enriched
+
+
+def _matched_domain_terms(candidate: dict) -> list[str]:
+    text_parts = [
+        str(candidate.get("description") or ""),
+        str(candidate.get("readme_text_excerpt") or ""),
+        " ".join(str(topic) for topic in candidate.get("topics") or []),
+    ]
+    normalized_text = _normalize_domain_text(" ".join(text_parts))
+    matches: list[str] = []
+    for term in DOMAIN_TERMS:
+        if _normalize_domain_text(term) in normalized_text:
+            matches.append(term)
+    return matches
+
+
+def _excerpt(value: str) -> str | None:
+    compact = " ".join(value.split())
+    if not compact:
+        return None
+    if len(compact) <= README_EXCERPT_LENGTH:
+        return compact
+    return f"{compact[:README_EXCERPT_LENGTH].rstrip()}..."
+
+
+def _normalize_domain_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
 
 
 def _normalized_tokens(value: str) -> list[str]:

@@ -10,6 +10,7 @@ def test_cli_imposters_command_renders_mocked_candidates(monkeypatch) -> None:
         lambda owner_repo, github_client: [
             {
                 "risk_level": "HIGH",
+                "classification": "possible-imposter",
                 "score": 95,
                 "full_name": "other/CodeBloodHound",
                 "fork": False,
@@ -28,8 +29,11 @@ def test_cli_imposters_command_renders_mocked_candidates(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "manual review" in result.output
     assert "other/CodeBloodHound" in result.output
+    assert "possible-imposter" in result.output
     assert "HIGH" in result.output
     assert "95" in result.output
+    assert "URL" not in result.output
+    assert "https://github.com/other/CodeBloodHound" not in result.output
     assert "HTML report written" not in result.output
 
 
