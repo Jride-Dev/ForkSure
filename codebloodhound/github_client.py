@@ -203,6 +203,34 @@ class GitHubClient:
             error=error,
         )
 
+    def search_repositories(self, query: str, *, per_page: int = 20, max_pages: int = 1) -> list[dict[str, Any]]:
+        repositories: list[dict[str, Any]] = []
+        safe_per_page = max(1, min(per_page, 100))
+        safe_max_pages = max(1, max_pages)
+
+        for page in range(1, safe_max_pages + 1):
+            try:
+                data = self._request(
+                    "GET",
+                    "/search/repositories",
+                    params={"q": query, "per_page": safe_per_page, "page": page},
+                )
+            except (GitHubRateLimitError, GitHubAPIError):
+                return repositories
+
+            if not isinstance(data, dict):
+                return repositories
+
+            items = data.get("items")
+            if not isinstance(items, list):
+                return repositories
+
+            repositories.extend(_normalize_repository_item(item) for item in items if isinstance(item, dict))
+            if len(items) < safe_per_page:
+                return repositories
+
+        return repositories
+
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {
             "Accept": "application/vnd.github+json",
@@ -265,6 +293,10 @@ def get_repo_readme(owner_repo: str) -> dict[str, bool | str | None]:
     return GitHubClient().get_repo_readme(owner_repo)
 
 
+def search_repositories(query: str, *, per_page: int = 20, max_pages: int = 1) -> list[dict[str, Any]]:
+    return GitHubClient().search_repositories(query, per_page=per_page, max_pages=max_pages)
+
+
 def _extract_error_message(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -297,3 +329,27 @@ def _decode_base64_text(value: str) -> tuple[str | None, str | None]:
         return raw.decode("utf-8", errors="replace"), None
     except (binascii.Error, ValueError) as exc:
         return None, f"Could not decode README content: {exc}"
+
+
+def _normalize_repository_item(item: dict[str, Any]) -> dict[str, Any]:
+    owner = item.get("owner")
+    owner_login = owner.get("login") if isinstance(owner, dict) else None
+    return {
+        "full_name": _optional_string(item.get("full_name")) or "",
+        "name": _optional_string(item.get("name")) or "",
+        "owner": _optional_string(owner_login) or "",
+        "html_url": _optional_string(item.get("html_url")) or "",
+        "description": _optional_string(item.get("description")),
+        "fork": bool(item.get("fork", False)),
+        "created_at": _optional_string(item.get("created_at")),
+        "pushed_at": _optional_string(item.get("pushed_at")),
+        "stargazers_count": _optional_int(item.get("stargazers_count")),
+        "default_branch": _optional_string(item.get("default_branch")) or "",
+    }
+
+
+def _optional_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0

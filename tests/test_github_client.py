@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from codebloodhound.github_client import GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
+from codebloodhound.github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
 
 
 def test_parse_owner_repo_accepts_owner_and_repo() -> None:
@@ -88,3 +88,14 @@ def test_get_repo_readme_decodes_base64_content(monkeypatch) -> None:
     assert readme_data["path"] == "README.md"
     assert readme_data["content_text"] == "# Project\n\nUpstream: owner/repo\n"
     assert readme_data["error"] is None
+
+
+def test_search_repositories_handles_api_error_gracefully(monkeypatch) -> None:
+    client = GitHubClient(token="")
+
+    def raise_api_error(*args, **kwargs):
+        raise GitHubAPIError("Search failed.")
+
+    monkeypatch.setattr(client, "_request", raise_api_error)
+
+    assert client.search_repositories("CodeBloodHound in:name") == []

@@ -8,6 +8,7 @@ from rich.table import Table
 
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
+from .imposter_scanner import scan_imposters
 from .license_scanner import compare_licenses
 from .readme_scanner import compare_readme_attribution
 from .reports import render_forks
@@ -28,7 +29,7 @@ app = typer.Typer(
 )
 security_app = typer.Typer(help="Run local security scans.", no_args_is_help=True)
 app.add_typer(security_app, name="security")
-console = Console()
+console = Console(width=140)
 
 
 @app.callback()
@@ -99,6 +100,24 @@ def forks(
         source_readme=source_readme,
         readme_results=readme_results,
     )
+
+
+@app.command()
+def imposters(owner_repo: str = typer.Argument(..., help="Repository in owner/repo format.")) -> None:
+    """Search GitHub for possible name-squatting repository candidates."""
+    try:
+        candidates = scan_imposters(owner_repo, GitHubClient())
+    except InvalidOwnerRepoError as exc:
+        console.print(f"[red]Invalid repository:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+    except GitHubRateLimitError as exc:
+        console.print(f"[red]Rate limited:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubAPIError as exc:
+        console.print(f"[red]GitHub error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    _render_imposter_candidates(candidates)
 
 
 @security_app.command("scripts")
@@ -215,6 +234,39 @@ def _parse_rule_option(value: str | None) -> list[str] | None:
     return rules or None
 
 
+def _render_imposter_candidates(candidates: list[dict]) -> None:
+    if not candidates:
+        console.print("[yellow]No imposter candidates found.[/yellow]")
+        return
+
+    console.print("[yellow]These are similarity candidates for manual review, not accusations.[/yellow]")
+    table = Table(title="Imposter Repository Candidates", show_lines=False)
+    table.add_column("Risk", style="bold", no_wrap=True)
+    table.add_column("Score", justify="right", no_wrap=True)
+    table.add_column("Repository", overflow="ellipsis", no_wrap=True)
+    table.add_column("Fork", no_wrap=True)
+    table.add_column("Stars", justify="right", no_wrap=True)
+    table.add_column("Pushed", no_wrap=True)
+    table.add_column("Reason", overflow="ellipsis", no_wrap=True)
+    table.add_column("URL", overflow="ellipsis", no_wrap=True)
+
+    for candidate in candidates:
+        reasons = candidate.get("reasons")
+        reason = "; ".join(str(item) for item in reasons) if isinstance(reasons, list) else "-"
+        table.add_row(
+            str(candidate.get("risk_level") or "INFO"),
+            str(candidate.get("score") or 0),
+            str(candidate.get("full_name") or "-"),
+            "yes" if candidate.get("fork") else "no",
+            str(candidate.get("stargazers_count") or 0),
+            _format_date(candidate.get("pushed_at")),
+            reason,
+            str(candidate.get("html_url") or "-"),
+        )
+
+    console.print(table)
+
+
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
     table = Table(title=title, show_lines=False)
     table.add_column("Severity", style="bold")
@@ -239,6 +291,13 @@ def _render_security_findings(title: str, findings: list[SecurityFinding]) -> No
         f"Risk level: [bold]{score['risk_level']}[/bold] "
         f"Findings: {score['finding_count']}"
     )
+
+
+def _format_date(value: object) -> str:
+    if value is None:
+        return "-"
+    text = str(value)
+    return text.split("T", 1)[0] if text else "-"
 
 
 if __name__ == "__main__":
