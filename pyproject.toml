@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "codebloodhound"
+name = "forksure"
 version = "0.1.0"
 description = "GitHub repository provenance, fork audit, imposter repo, and license drift scanner."
 readme = "README.md"
@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-codebloodhound = "codebloodhound.cli:app"
+forksure = "forksure.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

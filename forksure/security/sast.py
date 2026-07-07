@@ -55,7 +55,7 @@ def scan_sast(path: str | Path, rules: list[str] | None = None) -> list[Security
                 severity="medium",
                 title="Semgrep scan failed",
                 description=f"Semgrep could not complete the SAST scan: {exc}",
-                recommendation="Run Semgrep manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run Semgrep manually for more detail, then retry the ForkSure scan.",
                 source_tool="semgrep",
             )
         ]
@@ -68,7 +68,7 @@ def scan_sast(path: str | Path, rules: list[str] | None = None) -> list[Security
                 severity="medium",
                 title="Semgrep scan failed",
                 description=(result.stderr.strip() or "Semgrep exited without JSON output."),
-                recommendation="Run Semgrep manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run Semgrep manually for more detail, then retry the ForkSure scan.",
                 source_tool="semgrep",
             )
         ]
@@ -89,7 +89,7 @@ def _parse_semgrep_json(raw_json: str) -> list[SecurityFinding]:
                 category="sast",
                 severity="medium",
                 title="Malformed Semgrep JSON output",
-                description="Semgrep returned output that CodeBloodHound could not parse as JSON.",
+                description="Semgrep returned output that ForkSure could not parse as JSON.",
                 recommendation="Run Semgrep manually and verify it can produce JSON output.",
                 source_tool="semgrep",
             )

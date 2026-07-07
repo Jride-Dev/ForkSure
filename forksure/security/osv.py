@@ -46,7 +46,7 @@ def scan_osv(path: str | Path) -> list[SecurityFinding]:
                 severity="medium",
                 title="OSV Scanner failed",
                 description=f"OSV Scanner could not complete dependency vulnerability scanning: {exc}",
-                recommendation="Run OSV Scanner manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run OSV Scanner manually for more detail, then retry the ForkSure scan.",
                 source_tool="osv-scanner",
             )
         ]
@@ -59,7 +59,7 @@ def scan_osv(path: str | Path) -> list[SecurityFinding]:
                 severity="medium",
                 title="OSV Scanner failed",
                 description=(result.stderr.strip() or "OSV Scanner exited without JSON output."),
-                recommendation="Run OSV Scanner manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run OSV Scanner manually for more detail, then retry the ForkSure scan.",
                 source_tool="osv-scanner",
             )
         ]
@@ -80,7 +80,7 @@ def _parse_osv_json(raw_json: str) -> list[SecurityFinding]:
                 category="dependency-vulnerability",
                 severity="medium",
                 title="Malformed OSV Scanner JSON output",
-                description="OSV Scanner returned output that CodeBloodHound could not parse as JSON.",
+                description="OSV Scanner returned output that ForkSure could not parse as JSON.",
                 recommendation="Run OSV Scanner manually and verify it can produce JSON output.",
                 source_tool="osv-scanner",
             )

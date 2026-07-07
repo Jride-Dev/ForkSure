@@ -26,7 +26,7 @@ from .security.scripts import scan_unsafe_scripts
 
 
 app = typer.Typer(
-    name="codebloodhound",
+    name="forksure",
     help="Scan GitHub repository provenance, forks, imposters, license drift, and security risks.",
     no_args_is_help=True,
 )
@@ -37,7 +37,7 @@ console = Console(width=140)
 
 @app.callback()
 def main() -> None:
-    """CodeBloodHound command line interface."""
+    """ForkSure command line interface."""
 
 
 @app.command()

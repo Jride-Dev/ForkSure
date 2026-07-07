@@ -1,4 +1,4 @@
-from codebloodhound.security.scripts import scan_unsafe_scripts
+from forksure.security.scripts import scan_unsafe_scripts
 
 
 def test_unsafe_script_scanner_detects_curl_pipe_bash(tmp_path) -> None:

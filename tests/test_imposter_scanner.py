@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from codebloodhound.imposter_scanner import (
+from forksure.imposter_scanner import (
     README_EXCERPT_LENGTH,
     classify_imposter_candidate,
     generate_name_variants,
@@ -12,84 +12,83 @@ from codebloodhound.imposter_scanner import (
 
 
 def test_name_variant_generation_is_deterministic() -> None:
-    assert generate_name_variants("CodeBloodHound") == [
-        "CodeBloodHound",
-        "Code-BloodHound",
-        "Code_BloodHound",
-        "CodeBlood-Hound",
-        "CodeBloodhound",
-        "codebloodhound",
-        "CodeBloodHoundPro",
-        "CodeBloodHound-Scanner",
-        "CodeBloodHound-Tool",
+    assert generate_name_variants("ForkSure") == [
+        "ForkSure",
+        "Fork-Sure",
+        "Fork_Sure",
+        "Forksure",
+        "forksure",
+        "ForkSurePro",
+        "ForkSure-Scanner",
+        "ForkSure-Tool",
     ]
 
 
 def test_exact_same_name_under_different_owner_scores_high() -> None:
-    result = score_name_similarity("CodeBloodHound", "CodeBloodHound")
+    result = score_name_similarity("ForkSure", "ForkSure")
 
     assert result["risk_level"] == "HIGH"
     assert result["score"] >= 80
 
 
 def test_punctuation_case_normalized_match_scores_high() -> None:
-    result = score_name_similarity("CodeBloodHound", "code-blood-hound")
+    result = score_name_similarity("ForkSure", "fork-sure")
 
     assert result["risk_level"] == "HIGH"
     assert result["score"] >= 80
 
 
 def test_contained_target_name_scores_medium() -> None:
-    result = score_name_similarity("CodeBloodHound", "CodeBloodHoundPro")
+    result = score_name_similarity("ForkSure", "ForkSurePro")
 
     assert result["risk_level"] == "MEDIUM"
 
 
 def test_weak_unrelated_name_scores_low_or_info() -> None:
-    result = score_name_similarity("CodeBloodHound", "requests")
+    result = score_name_similarity("ForkSure", "requests")
 
     assert result["risk_level"] in {"LOW", "INFO"}
 
 
 def test_same_name_same_domain_candidate_classifies_as_possible_imposter() -> None:
     candidate = _repo(
-        "other/CodeBloodHound",
-        "CodeBloodHound",
+        "other/ForkSure",
+        "ForkSure",
         description="Supply chain SAST and secrets scanning for repository provenance.",
     )
     candidate["score"] = 95
 
-    result = classify_imposter_candidate("Jride-Dev/CodeBloodHound", candidate)
+    result = classify_imposter_candidate("Jride-Dev/ForkSure", candidate)
 
     assert result["classification"] == "possible-imposter"
     assert result["risk_level"] == "HIGH"
 
 
 def test_exact_name_unrelated_description_classifies_as_name_collision() -> None:
-    candidate = _repo("other/CodeBloodHound", "CodeBloodHound", description="A tabletop campaign journal.")
+    candidate = _repo("other/ForkSure", "ForkSure", description="A tabletop campaign journal.")
     candidate["score"] = 95
 
-    result = classify_imposter_candidate("Jride-Dev/CodeBloodHound", candidate)
+    result = classify_imposter_candidate("Jride-Dev/ForkSure", candidate)
 
     assert result["classification"] == "name-collision"
     assert result["risk_level"] == "LOW"
 
 
 def test_official_fork_lowers_risk() -> None:
-    candidate = _repo("other/CodeBloodHound", "CodeBloodHound", fork=True)
+    candidate = _repo("other/ForkSure", "ForkSure", fork=True)
     candidate["score"] = 95
 
-    result = classify_imposter_candidate("Jride-Dev/CodeBloodHound", candidate)
+    result = classify_imposter_candidate("Jride-Dev/ForkSure", candidate)
 
     assert result["classification"] == "official-fork"
     assert result["risk_level"] == "INFO"
 
 
 def test_weak_fuzzy_candidate_remains_low_risk() -> None:
-    candidate = _repo("other/BloodHound", "BloodHound")
+    candidate = _repo("other/RepoGuard", "RepoGuard")
     candidate["score"] = 35
 
-    result = classify_imposter_candidate("Jride-Dev/CodeBloodHound", candidate)
+    result = classify_imposter_candidate("Jride-Dev/ForkSure", candidate)
 
     assert result["classification"] == "weak-similarity"
     assert result["risk_level"] == "LOW"
@@ -98,50 +97,50 @@ def test_weak_fuzzy_candidate_remains_low_risk() -> None:
 def test_scan_imposters_excludes_source_repo_itself() -> None:
     client = FakeSearchClient(
         [
-            _repo("Jride-Dev/CodeBloodHound", "CodeBloodHound"),
-            _repo("other/CodeBloodHound", "CodeBloodHound"),
+            _repo("Jride-Dev/ForkSure", "ForkSure"),
+            _repo("other/ForkSure", "ForkSure"),
         ]
     )
 
-    candidates = scan_imposters("Jride-Dev/CodeBloodHound", client)
+    candidates = scan_imposters("Jride-Dev/ForkSure", client)
 
-    assert [candidate["full_name"] for candidate in candidates] == ["other/CodeBloodHound"]
+    assert [candidate["full_name"] for candidate in candidates] == ["other/ForkSure"]
 
 
 def test_scan_imposters_deduplicates_repeated_search_results() -> None:
     client = FakeSearchClient(
         [
-            _repo("other/CodeBloodHound", "CodeBloodHound"),
-            _repo("other/CodeBloodHound", "CodeBloodHound"),
+            _repo("other/ForkSure", "ForkSure"),
+            _repo("other/ForkSure", "ForkSure"),
         ]
     )
 
-    candidates = scan_imposters("Jride-Dev/CodeBloodHound", client)
+    candidates = scan_imposters("Jride-Dev/ForkSure", client)
 
     assert len(candidates) == 1
-    assert candidates[0]["full_name"] == "other/CodeBloodHound"
+    assert candidates[0]["full_name"] == "other/ForkSure"
     assert candidates[0]["classification"] == "name-collision"
     assert candidates[0]["score"] >= 80
 
 
 def test_scan_imposters_enriches_license_and_readme() -> None:
-    client = FakeSearchClient([_repo("other/CodeBloodHound", "CodeBloodHound")], enrich=True)
+    client = FakeSearchClient([_repo("other/ForkSure", "ForkSure")], enrich=True)
 
-    candidates = scan_imposters("Jride-Dev/CodeBloodHound", client)
+    candidates = scan_imposters("Jride-Dev/ForkSure", client)
 
     assert candidates[0]["license_key"] == "mit"
     assert candidates[0]["license_name"] == "MIT License"
     assert candidates[0]["readme_status"] == "found"
     assert "dependency scanning" in candidates[0]["readme_text_excerpt"]
     assert candidates[0]["readme_excerpt_truncated"] is False
-    assert candidates[0]["readme_html_url"] == "https://github.com/other/CodeBloodHound/blob/main/README.md"
+    assert candidates[0]["readme_html_url"] == "https://github.com/other/ForkSure/blob/main/README.md"
 
 
 def test_scan_imposters_marks_long_readme_excerpt_as_truncated() -> None:
     readme_text = "First line\n" + ("A" * (README_EXCERPT_LENGTH + 100))
-    client = FakeSearchClient([_repo("other/CodeBloodHound", "CodeBloodHound")], enrich=True, readme_text=readme_text)
+    client = FakeSearchClient([_repo("other/ForkSure", "ForkSure")], enrich=True, readme_text=readme_text)
 
-    candidates = scan_imposters("Jride-Dev/CodeBloodHound", client)
+    candidates = scan_imposters("Jride-Dev/ForkSure", client)
 
     assert candidates[0]["readme_excerpt_truncated"] is True
     assert candidates[0]["readme_text_excerpt"].startswith("First line\n")

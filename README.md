@@ -7,7 +7,7 @@ imposter repository checks, and license drift scanning.
 
 ```powershell
 $env:GITHUB_TOKEN = "ghp_..."
-codebloodhound forks owner/repo
+forksure forks owner/repo
 ```
 
 The token is optional, but authenticated requests get higher GitHub API limits.

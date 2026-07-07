@@ -263,7 +263,7 @@ class GitHubClient:
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "CodeBloodHound/0.1",
+            "User-Agent": "ForkSure/0.1",
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"

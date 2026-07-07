@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from codebloodhound.risk import score_repo
+from forksure.risk import score_repo
 
 
 @dataclass

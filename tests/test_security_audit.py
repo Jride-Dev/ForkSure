@@ -1,9 +1,9 @@
 from typer.testing import CliRunner
 
-from codebloodhound.cli import app
-from codebloodhound.security.audit import run_security_audit
-from codebloodhound.security.findings import SecurityFinding
-from codebloodhound.security.scoring import calculate_security_score
+from forksure.cli import app
+from forksure.security.audit import run_security_audit
+from forksure.security.findings import SecurityFinding
+from forksure.security.scoring import calculate_security_score
 
 
 def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_path) -> None:
@@ -42,11 +42,11 @@ def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_pat
         title="Semgrep unavailable",
         description="SAST scanner finding.",
     )
-    monkeypatch.setattr("codebloodhound.security.audit.scan_unsafe_scripts", lambda path: [script_finding])
-    monkeypatch.setattr("codebloodhound.security.audit.scan_dependencies", lambda path: [dependency_finding])
-    monkeypatch.setattr("codebloodhound.security.audit.scan_osv", lambda path: [osv_finding])
-    monkeypatch.setattr("codebloodhound.security.audit.scan_secrets", lambda path: [secret_finding])
-    monkeypatch.setattr("codebloodhound.security.audit.scan_sast", lambda path: [sast_finding])
+    monkeypatch.setattr("forksure.security.audit.scan_unsafe_scripts", lambda path: [script_finding])
+    monkeypatch.setattr("forksure.security.audit.scan_dependencies", lambda path: [dependency_finding])
+    monkeypatch.setattr("forksure.security.audit.scan_osv", lambda path: [osv_finding])
+    monkeypatch.setattr("forksure.security.audit.scan_secrets", lambda path: [secret_finding])
+    monkeypatch.setattr("forksure.security.audit.scan_sast", lambda path: [sast_finding])
 
     findings = run_security_audit(tmp_path)
 
@@ -56,9 +56,9 @@ def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_pat
 def test_combined_audit_scoring_works(monkeypatch, tmp_path) -> None:
     script = tmp_path / "install.sh"
     script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     score = calculate_security_score(run_security_audit(tmp_path))
 
@@ -70,9 +70,9 @@ def test_combined_audit_scoring_works(monkeypatch, tmp_path) -> None:
 
 
 def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
     runner = CliRunner()
 
     result = runner.invoke(app, ["security", "audit", str(tmp_path)])
@@ -86,9 +86,9 @@ def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch
 
 
 def test_audit_includes_gitleaks_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
@@ -101,9 +101,9 @@ def test_audit_includes_gitleaks_unavailable_info_when_missing(monkeypatch, tmp_
 
 
 def test_combined_audit_includes_osv_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
@@ -111,9 +111,9 @@ def test_combined_audit_includes_osv_unavailable_info_when_missing(monkeypatch, 
 
 
 def test_combined_audit_includes_semgrep_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
@@ -125,9 +125,9 @@ def test_combined_audit_includes_dependency_findings(monkeypatch, tmp_path) -> N
     pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
     uv_lock = tmp_path / "uv.lock"
     uv_lock.write_text("version = 1\n", encoding="utf-8")
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 
@@ -137,9 +137,9 @@ def test_combined_audit_includes_dependency_findings(monkeypatch, tmp_path) -> N
 def test_audit_command_detects_unsafe_script_findings(monkeypatch, tmp_path) -> None:
     script = tmp_path / "install.sh"
     script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
     runner = CliRunner()
 
     result = runner.invoke(app, ["security", "audit", str(tmp_path)])
@@ -157,9 +157,9 @@ def test_combined_audit_does_not_report_pytest_temp_fixture_files(monkeypatch, t
         script = script_dir / "install.sh"
         script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
 
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = run_security_audit(tmp_path)
 

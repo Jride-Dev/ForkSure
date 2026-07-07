@@ -1,5 +1,5 @@
-from codebloodhound.security.findings import SecurityFinding
-from codebloodhound.security.scoring import calculate_security_score
+from forksure.security.findings import SecurityFinding
+from forksure.security.scoring import calculate_security_score
 
 
 def test_security_score_has_info_level_with_no_findings() -> None:

@@ -1,4 +1,4 @@
-from codebloodhound.license_scanner import compare_licenses
+from forksure.license_scanner import compare_licenses
 
 
 def test_license_comparison_same_is_info() -> None:

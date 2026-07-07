@@ -2,13 +2,13 @@ import json
 
 from typer.testing import CliRunner
 
-from codebloodhound.cli import app
-from codebloodhound.security.findings import SecurityFinding
-from codebloodhound.security.sast import _parse_semgrep_json, scan_sast
+from forksure.cli import app
+from forksure.security.findings import SecurityFinding
+from forksure.security.sast import _parse_semgrep_json, scan_sast
 
 
 def test_sast_scanner_handles_missing_semgrep_gracefully(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.sast.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
 
     findings = scan_sast(tmp_path)
 
@@ -104,7 +104,7 @@ def test_semgrep_evidence_is_limited() -> None:
 
 def test_cli_security_sast_invokes_without_real_semgrep(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
-        "codebloodhound.cli.scan_sast",
+        "forksure.cli.scan_sast",
         lambda path, rules=None: [
             SecurityFinding(
                 id="sast-test",

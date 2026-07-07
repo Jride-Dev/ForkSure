@@ -52,7 +52,7 @@ def scan_secrets(path: str | Path) -> list[SecurityFinding]:
                 severity="medium",
                 title="Gitleaks scan failed",
                 description=f"Gitleaks could not complete the secret scan: {exc}",
-                recommendation="Run Gitleaks manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run Gitleaks manually for more detail, then retry the ForkSure scan.",
             )
         ]
 
@@ -64,7 +64,7 @@ def scan_secrets(path: str | Path) -> list[SecurityFinding]:
                 severity="medium",
                 title="Gitleaks scan failed",
                 description=(result.stderr.strip() or "Gitleaks exited without JSON output."),
-                recommendation="Run Gitleaks manually for more detail, then retry the CodeBloodHound scan.",
+                recommendation="Run Gitleaks manually for more detail, then retry the ForkSure scan.",
                 source_tool="gitleaks",
             )
         ]
@@ -85,7 +85,7 @@ def _parse_gitleaks_json(raw_json: str) -> list[SecurityFinding]:
                 category="secrets",
                 severity="medium",
                 title="Malformed Gitleaks JSON output",
-                description="Gitleaks returned output that CodeBloodHound could not parse as JSON.",
+                description="Gitleaks returned output that ForkSure could not parse as JSON.",
                 recommendation="Run Gitleaks manually and verify it can produce JSON output.",
                 source_tool="gitleaks",
             )

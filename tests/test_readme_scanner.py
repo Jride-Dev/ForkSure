@@ -1,11 +1,11 @@
-from codebloodhound.readme_scanner import compare_readme_attribution
+from forksure.readme_scanner import compare_readme_attribution
 
 
 def test_readme_attribution_preserved_with_owner_repo() -> None:
     result = compare_readme_attribution(
-        "Jride-Dev/CodeBloodHound",
+        "Jride-Dev/ForkSure",
         _readme("Source README"),
-        _readme("This fork is based on Jride-Dev/CodeBloodHound."),
+        _readme("This fork is based on Jride-Dev/ForkSure."),
     )
 
     assert result["status"] == "preserved"
@@ -14,9 +14,9 @@ def test_readme_attribution_preserved_with_owner_repo() -> None:
 
 def test_readme_attribution_preserved_with_full_github_url() -> None:
     result = compare_readme_attribution(
-        "Jride-Dev/CodeBloodHound",
+        "Jride-Dev/ForkSure",
         _readme("Source README"),
-        _readme("Upstream: https://github.com/Jride-Dev/CodeBloodHound"),
+        _readme("Upstream: https://github.com/Jride-Dev/ForkSure"),
     )
 
     assert result["status"] == "preserved"
@@ -25,7 +25,7 @@ def test_readme_attribution_preserved_with_full_github_url() -> None:
 
 def test_missing_fork_readme_is_medium() -> None:
     result = compare_readme_attribution(
-        "Jride-Dev/CodeBloodHound",
+        "Jride-Dev/ForkSure",
         _readme("Source README"),
         _missing_readme(),
     )
@@ -36,7 +36,7 @@ def test_missing_fork_readme_is_medium() -> None:
 
 def test_fork_readme_without_attribution_is_high() -> None:
     result = compare_readme_attribution(
-        "Jride-Dev/CodeBloodHound",
+        "Jride-Dev/ForkSure",
         _readme("Source README"),
         _readme("A renamed project with no upstream credit."),
     )
@@ -47,7 +47,7 @@ def test_fork_readme_without_attribution_is_high() -> None:
 
 def test_missing_source_readme_is_unknown_low() -> None:
     result = compare_readme_attribution(
-        "Jride-Dev/CodeBloodHound",
+        "Jride-Dev/ForkSure",
         _missing_readme(),
         _readme("Fork README"),
     )

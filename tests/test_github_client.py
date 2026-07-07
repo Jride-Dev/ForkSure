@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from codebloodhound.github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
+from forksure.github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
 
 
 def test_parse_owner_repo_accepts_owner_and_repo() -> None:
@@ -98,7 +98,7 @@ def test_search_repositories_handles_api_error_gracefully(monkeypatch) -> None:
 
     monkeypatch.setattr(client, "_request", raise_api_error)
 
-    assert client.search_repositories("CodeBloodHound in:name") == []
+    assert client.search_repositories("ForkSure in:name") == []
 
 
 def test_search_code_handles_api_error_gracefully(monkeypatch) -> None:

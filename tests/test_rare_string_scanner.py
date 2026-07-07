@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from codebloodhound.rare_string_scanner import (
+from forksure.rare_string_scanner import (
     extract_rare_strings_from_text,
     merge_rare_string_matches,
     scan_rare_string_matches,
@@ -15,17 +15,17 @@ def test_rare_string_extraction_ignores_generic_markdown_badges_and_urls() -> No
 [![build](https://img.shields.io/badge/build-passing-green.svg)](https://example.com)
 https://github.com/example/project
 pip install example
-CodeBloodHound correlates fork provenance with license drift evidence.
+ForkSure correlates fork provenance with license drift evidence.
 """
 
     strings = extract_rare_strings_from_text(text)
 
-    assert strings == ["CodeBloodHound correlates fork provenance with license drift evidence."]
+    assert strings == ["ForkSure correlates fork provenance with license drift evidence."]
 
 
 def test_rare_string_extraction_is_deterministic_for_project_phrases() -> None:
     text = """
-CodeBloodHound correlates fork provenance with license drift evidence.
+ForkSure correlates fork provenance with license drift evidence.
 Repository provenance checks highlight possible imposter packages for manual review.
 The token is optional
 """
@@ -34,48 +34,48 @@ The token is optional
     second = extract_rare_strings_from_text(text)
 
     assert first == second
-    assert "CodeBloodHound correlates fork provenance with license drift evidence." in first
+    assert "ForkSure correlates fork provenance with license drift evidence." in first
     assert "Repository provenance checks highlight possible imposter packages for manual review." in first
 
 
 def test_rare_string_scan_excludes_source_repo_itself() -> None:
     client = FakeRareStringClient(
         [
-            _code_result("Jride-Dev/CodeBloodHound"),
-            _code_result("other/CodeBloodHound"),
+            _code_result("Jride-Dev/ForkSure"),
+            _code_result("other/ForkSure"),
         ]
     )
 
-    matches = scan_rare_string_matches("Jride-Dev/CodeBloodHound", client, max_strings=1)
+    matches = scan_rare_string_matches("Jride-Dev/ForkSure", client, max_strings=1)
 
-    assert [match["repository_full_name"] for match in matches] == ["other/CodeBloodHound"]
+    assert [match["repository_full_name"] for match in matches] == ["other/ForkSure"]
 
 
 def test_rare_string_scan_deduplicates_repositories() -> None:
     client = FakeRareStringClient(
         [
-            _code_result("other/CodeBloodHound", path="README.md"),
-            _code_result("other/CodeBloodHound", path="docs/overview.md"),
+            _code_result("other/ForkSure", path="README.md"),
+            _code_result("other/ForkSure", path="docs/overview.md"),
         ]
     )
 
-    matches = scan_rare_string_matches("Jride-Dev/CodeBloodHound", client, max_strings=1)
+    matches = scan_rare_string_matches("Jride-Dev/ForkSure", client, max_strings=1)
 
     assert len(matches) == 1
-    assert matches[0]["repository_full_name"] == "other/CodeBloodHound"
+    assert matches[0]["repository_full_name"] == "other/ForkSure"
     assert len(matches[0]["rare_string_matches"]) == 2
 
 
 def test_rare_string_scan_assigns_high_for_multiple_non_fork_matches() -> None:
     client = FakeRareStringClient(
-        [_code_result("other/CodeBloodHound")],
+        [_code_result("other/ForkSure")],
         readme_text="""
-CodeBloodHound correlates fork provenance with license drift evidence.
+ForkSure correlates fork provenance with license drift evidence.
 Repository provenance checks highlight possible imposter packages for manual review.
 """,
     )
 
-    matches = scan_rare_string_matches("Jride-Dev/CodeBloodHound", client, max_strings=2)
+    matches = scan_rare_string_matches("Jride-Dev/ForkSure", client, max_strings=2)
 
     assert matches[0]["risk_level"] == "HIGH"
     assert matches[0]["score"] == 85
@@ -86,14 +86,14 @@ def test_merge_rare_string_matches_adds_rare_only_candidate() -> None:
         [],
         [
             {
-                "repository_full_name": "other/CodeBloodHound",
-                "repository_html_url": "https://github.com/other/CodeBloodHound",
+                "repository_full_name": "other/ForkSure",
+                "repository_html_url": "https://github.com/other/ForkSure",
                 "fork": False,
                 "rare_string_matches": [
                     {
-                        "matched_string": "CodeBloodHound correlates fork provenance with license drift evidence.",
+                        "matched_string": "ForkSure correlates fork provenance with license drift evidence.",
                         "file_path": "README.md",
-                        "file_html_url": "https://github.com/other/CodeBloodHound/blob/main/README.md",
+                        "file_html_url": "https://github.com/other/ForkSure/blob/main/README.md",
                         "reason": "Rare source phrase found in candidate repository.",
                     }
                 ],
@@ -104,7 +104,7 @@ def test_merge_rare_string_matches_adds_rare_only_candidate() -> None:
         ],
     )
 
-    assert merged[0]["full_name"] == "other/CodeBloodHound"
+    assert merged[0]["full_name"] == "other/ForkSure"
     assert merged[0]["classification"] == "possible-imposter"
     assert merged[0]["rare_string_matches"]
 
@@ -112,7 +112,7 @@ def test_merge_rare_string_matches_adds_rare_only_candidate() -> None:
 class FakeRareStringClient:
     def __init__(self, results: list[dict[str, Any]], *, readme_text: str | None = None) -> None:
         self.results = results
-        self.readme_text = readme_text or "CodeBloodHound correlates fork provenance with license drift evidence."
+        self.readme_text = readme_text or "ForkSure correlates fork provenance with license drift evidence."
 
     def get_repo_readme(self, owner_repo: str) -> dict[str, Any]:
         return {

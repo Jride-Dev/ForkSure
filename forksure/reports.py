@@ -172,7 +172,7 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>CodeBloodHound Imposter Scan</title>
+    <title>ForkSure Imposter Scan</title>
     <style>
       body {{
         background: #f7f8fa;
@@ -356,7 +356,7 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
   </head>
   <body>
     <main>
-      <h1>CodeBloodHound Imposter Scan</h1>
+      <h1>ForkSure Imposter Scan</h1>
       <p class="meta"><strong>Target repo:</strong> <code>{escape(owner_repo)}</code></p>
       <p class="meta"><strong>Scan timestamp:</strong> {escape(timestamp)}</p>
       <p class="disclaimer">{escape(IMPOSTER_DISCLAIMER)}</p>

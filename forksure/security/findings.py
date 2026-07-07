@@ -17,7 +17,7 @@ class SecurityFinding:
     line: int | None = None
     evidence: str | None = None
     recommendation: str | None = None
-    source_tool: str = "codebloodhound"
+    source_tool: str = "forksure"
 
     def __post_init__(self) -> None:
         severity = self.severity.lower()

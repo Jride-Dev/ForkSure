@@ -2,13 +2,13 @@ import json
 
 from typer.testing import CliRunner
 
-from codebloodhound.cli import app
-from codebloodhound.security.findings import SecurityFinding
-from codebloodhound.security.secrets import _parse_gitleaks_json, scan_secrets
+from forksure.cli import app
+from forksure.security.findings import SecurityFinding
+from forksure.security.secrets import _parse_gitleaks_json, scan_secrets
 
 
 def test_secrets_scanner_handles_missing_gitleaks_gracefully(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
 
     findings = scan_secrets(tmp_path)
 
@@ -87,7 +87,7 @@ def test_parser_handles_malformed_json_gracefully() -> None:
 
 def test_cli_security_secrets_invokes_without_real_gitleaks(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
-        "codebloodhound.cli.scan_secrets",
+        "forksure.cli.scan_secrets",
         lambda path: [
             SecurityFinding(
                 id="secret-test",

@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 from rich.console import Console
 from typer.testing import CliRunner
 
-from codebloodhound.cli import app
-from codebloodhound.github_client import GitHubRepo
-from codebloodhound.reports import render_forks
+from forksure.cli import app
+from forksure.github_client import GitHubRepo
+from forksure.reports import render_forks
 
 
 def test_forks_command_accepts_audit_license(monkeypatch) -> None:
@@ -16,11 +16,11 @@ def test_forks_command_accepts_audit_license(monkeypatch) -> None:
         def get_repo_license(self, owner_repo: str) -> dict[str, bool | str | None]:
             return _license("mit", "MIT", "MIT License")
 
-    monkeypatch.setattr("codebloodhound.cli.GitHubClient", FakeClient)
-    monkeypatch.setattr("codebloodhound.cli.console", Console(width=160))
+    monkeypatch.setattr("forksure.cli.GitHubClient", FakeClient)
+    monkeypatch.setattr("forksure.cli.console", Console(width=160))
     runner = CliRunner()
 
-    result = runner.invoke(app, ["forks", "Jride-Dev/CodeBloodHound", "--audit-license"])
+    result = runner.invoke(app, ["forks", "Jride-Dev/ForkSure", "--audit-license"])
 
     assert result.exit_code == 0
     assert "Source license" in result.output
@@ -36,15 +36,15 @@ def test_forks_command_renders_license_status_with_mocked_client(monkeypatch) ->
             return [fork]
 
         def get_repo_license(self, owner_repo: str) -> dict[str, bool | str | None]:
-            if owner_repo == "Jride-Dev/CodeBloodHound":
+            if owner_repo == "Jride-Dev/ForkSure":
                 return _license("mit", "MIT", "MIT License")
             return _license("bsd", "BSD", "BSD License")
 
-    monkeypatch.setattr("codebloodhound.cli.GitHubClient", FakeClient)
-    monkeypatch.setattr("codebloodhound.cli.console", Console(width=160))
+    monkeypatch.setattr("forksure.cli.GitHubClient", FakeClient)
+    monkeypatch.setattr("forksure.cli.console", Console(width=160))
     runner = CliRunner()
 
-    result = runner.invoke(app, ["forks", "Jride-Dev/CodeBloodHound", "--audit-license"])
+    result = runner.invoke(app, ["forks", "Jride-Dev/ForkSure", "--audit-license"])
 
     assert result.exit_code == 0
     assert "fork/cbh" in result.output
@@ -61,11 +61,11 @@ def test_forks_command_accepts_audit_readme(monkeypatch) -> None:
         def get_repo_readme(self, owner_repo: str) -> dict[str, bool | str | None]:
             return _readme("Source README")
 
-    monkeypatch.setattr("codebloodhound.cli.GitHubClient", FakeClient)
-    monkeypatch.setattr("codebloodhound.cli.console", Console(width=180))
+    monkeypatch.setattr("forksure.cli.GitHubClient", FakeClient)
+    monkeypatch.setattr("forksure.cli.console", Console(width=180))
     runner = CliRunner()
 
-    result = runner.invoke(app, ["forks", "Jride-Dev/CodeBloodHound", "--audit-readme"])
+    result = runner.invoke(app, ["forks", "Jride-Dev/ForkSure", "--audit-readme"])
 
     assert result.exit_code == 0
     assert "Source README" in result.output
@@ -84,17 +84,17 @@ def test_forks_command_accepts_license_and_readme_audits(monkeypatch) -> None:
             return _license("mit", "MIT", "MIT License")
 
         def get_repo_readme(self, owner_repo: str) -> dict[str, bool | str | None]:
-            if owner_repo == "Jride-Dev/CodeBloodHound":
+            if owner_repo == "Jride-Dev/ForkSure":
                 return _readme("Source README")
-            return _readme("Fork credits Jride-Dev/CodeBloodHound.")
+            return _readme("Fork credits Jride-Dev/ForkSure.")
 
-    monkeypatch.setattr("codebloodhound.cli.GitHubClient", FakeClient)
-    monkeypatch.setattr("codebloodhound.cli.console", Console(width=180))
+    monkeypatch.setattr("forksure.cli.GitHubClient", FakeClient)
+    monkeypatch.setattr("forksure.cli.console", Console(width=180))
     runner = CliRunner()
 
     result = runner.invoke(
         app,
-        ["forks", "Jride-Dev/CodeBloodHound", "--audit-license", "--audit-readme"],
+        ["forks", "Jride-Dev/ForkSure", "--audit-license", "--audit-readme"],
     )
 
     assert result.exit_code == 0

@@ -2,13 +2,13 @@ import json
 
 from typer.testing import CliRunner
 
-from codebloodhound.cli import app
-from codebloodhound.security.findings import SecurityFinding
-from codebloodhound.security.osv import _parse_osv_json, scan_osv
+from forksure.cli import app
+from forksure.security.findings import SecurityFinding
+from forksure.security.osv import _parse_osv_json, scan_osv
 
 
 def test_osv_scanner_handles_missing_osv_scanner_gracefully(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr("codebloodhound.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
 
     findings = scan_osv(tmp_path)
 
@@ -106,7 +106,7 @@ def test_malformed_osv_json_returns_medium_finding() -> None:
 
 def test_cli_security_osv_invokes_without_real_osv_scanner(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
-        "codebloodhound.cli.scan_osv",
+        "forksure.cli.scan_osv",
         lambda path: [
             SecurityFinding(
                 id="osv-test",
