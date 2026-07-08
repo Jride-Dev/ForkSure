@@ -13,6 +13,7 @@ from .license_scanner import format_license
 
 
 IMPOSTER_DISCLAIMER = "These are similarity candidates for manual review, not accusations."
+COMPARE_DISCLAIMER = "This metadata comparison is for manual review, not an accusation."
 
 
 def render_forks(
@@ -156,6 +157,219 @@ def write_imposter_html_report(owner_repo: str, candidates: list[dict], output_p
     timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
     path.write_text(_imposter_report_html(owner_repo, candidates, timestamp), encoding="utf-8")
     return path
+
+
+def write_compare_html_report(comparison: Mapping[str, Any], output_path: str | Path) -> Path:
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+    path.write_text(_compare_report_html(comparison, timestamp), encoding="utf-8")
+    return path
+
+
+def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
+    source = _mapping_or_empty(comparison.get("source"))
+    candidate = _mapping_or_empty(comparison.get("candidate"))
+    name_similarity = _mapping_or_empty(comparison.get("name_similarity"))
+    license_comparison = _mapping_or_empty(comparison.get("license_comparison"))
+    readme_comparison = _mapping_or_empty(comparison.get("readme_comparison"))
+    overall_risk = str(comparison.get("overall_risk") or "INFO")
+    reasons = comparison.get("reasons")
+
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ForkSure Repository Compare</title>
+    <style>
+      body {{
+        background: #f7f8fa;
+        color: #1f2937;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 32px;
+      }}
+      main {{
+        background: #ffffff;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        margin: 0 auto;
+        max-width: 1100px;
+        padding: 28px;
+      }}
+      h1 {{
+        font-size: 28px;
+        margin: 0 0 8px;
+      }}
+      h2, h3 {{
+        margin: 0;
+      }}
+      h2 {{
+        font-size: 20px;
+      }}
+      h3 {{
+        font-size: 16px;
+        margin-bottom: 8px;
+      }}
+      a {{
+        color: #075985;
+        overflow-wrap: anywhere;
+      }}
+      .meta, .disclaimer {{
+        margin: 8px 0;
+      }}
+      .disclaimer {{
+        background: #fff7df;
+        border: 1px solid #ead28a;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }}
+      .repo-grid, .summary-grid {{
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin-top: 20px;
+      }}
+      .card {{
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        padding: 16px;
+      }}
+      .risk {{
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 8px;
+        padding: 3px 8px;
+      }}
+      .risk-high {{
+        background: #fee2e2;
+        color: #991b1b;
+      }}
+      .risk-medium {{
+        background: #ffedd5;
+        color: #9a3412;
+      }}
+      .risk-low {{
+        background: #dcfce7;
+        color: #166534;
+      }}
+      .risk-info {{
+        background: #e0f2fe;
+        color: #075985;
+      }}
+      dl {{
+        display: grid;
+        gap: 8px 14px;
+        grid-template-columns: max-content 1fr;
+        margin: 12px 0 0;
+      }}
+      dt {{
+        color: #64748b;
+        font-weight: 700;
+      }}
+      dd {{
+        margin: 0;
+        overflow-wrap: anywhere;
+      }}
+      ul {{
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }}
+      li {{
+        margin: 6px 0;
+      }}
+      .section {{
+        margin-top: 22px;
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ForkSure Repository Compare</h1>
+      <p class="meta"><strong>Scan timestamp:</strong> {escape(timestamp)}</p>
+      <p class="disclaimer">{escape(COMPARE_DISCLAIMER)}</p>
+      <section class="section">
+        <h2>Overall Risk <span class="risk risk-{escape(_risk_class(overall_risk))}">{escape(overall_risk)}</span></h2>
+        {_html_list(reasons)}
+      </section>
+      <section class="repo-grid" aria-label="Repository metadata">
+{_compare_repo_card("Source repo", source)}
+{_compare_repo_card("Candidate repo", candidate)}
+      </section>
+      <section class="summary-grid" aria-label="Comparison summary">
+{_compare_status_card("Name similarity", [
+        ("Score", str(name_similarity.get("score") or 0)),
+        ("Risk", str(name_similarity.get("risk_level") or "INFO")),
+        ("Reasons", "; ".join(str(reason) for reason in name_similarity.get("reasons", []) if reason) or "-"),
+    ])}
+{_compare_status_card("License comparison", [
+        ("Status", str(license_comparison.get("status") or "unknown")),
+        ("Risk", str(license_comparison.get("severity") or "low").upper()),
+        ("Summary", str(license_comparison.get("summary") or "-")),
+    ])}
+{_compare_status_card("README attribution comparison", [
+        ("Status", str(readme_comparison.get("status") or "unknown")),
+        ("Risk", str(readme_comparison.get("severity") or "low").upper()),
+        ("Summary", str(readme_comparison.get("summary") or "-")),
+    ])}
+      </section>
+    </main>
+  </body>
+</html>
+"""
+
+
+def _compare_repo_card(title: str, repo: Mapping[str, Any]) -> str:
+    full_name = str(repo.get("full_name") or "-")
+    url = str(repo.get("html_url") or "")
+    link = (
+        f'<a href="{escape(url, quote=True)}">{escape(full_name)}</a>'
+        if url
+        else escape(full_name)
+    )
+    return f"""        <article class="card">
+          <h3>{escape(title)}</h3>
+          <dl>
+            <dt>Repository</dt><dd>{link}</dd>
+            <dt>Description</dt><dd>{escape(str(repo.get("description") or "-"))}</dd>
+            <dt>Fork</dt><dd>{"yes" if repo.get("fork") else "no"}</dd>
+            <dt>Created</dt><dd>{escape(str(repo.get("created_at") or "-"))}</dd>
+            <dt>Pushed</dt><dd>{escape(str(repo.get("pushed_at") or "-"))}</dd>
+            <dt>Stars</dt><dd>{escape(str(repo.get("stargazers_count") or 0))}</dd>
+            <dt>Default branch</dt><dd>{escape(str(repo.get("default_branch") or "-"))}</dd>
+            <dt>License</dt><dd>{escape(str(repo.get("license_label") or "unknown"))}</dd>
+            <dt>README</dt><dd>{escape(str(repo.get("readme_status") or "unknown"))}</dd>
+          </dl>
+        </article>"""
+
+
+def _compare_status_card(title: str, rows: list[tuple[str, str]]) -> str:
+    entries = "\n".join(
+        f"            <dt>{escape(label)}</dt><dd>{escape(value)}</dd>"
+        for label, value in rows
+    )
+    return f"""        <article class="card">
+          <h3>{escape(title)}</h3>
+          <dl>
+{entries}
+          </dl>
+        </article>"""
+
+
+def _html_list(values: object) -> str:
+    if not isinstance(values, list) or not values:
+        return "<p>-</p>"
+    items = "".join(f"<li>{escape(str(value))}</li>" for value in values)
+    return f"<ul>{items}</ul>"
+
+
+def _risk_class(risk: str) -> str:
+    value = "".join(character for character in risk.casefold() if character.isalnum() or character == "-")
+    return value or "info"
 
 
 def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: str) -> str:

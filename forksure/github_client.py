@@ -54,6 +54,7 @@ class GitHubRepo(BaseModel):
     full_name: str
     owner: GitHubOwner
     html_url: HttpUrl
+    description: str | None = None
     created_at: datetime
     pushed_at: datetime | None = None
     stargazers_count: int = Field(default=0)

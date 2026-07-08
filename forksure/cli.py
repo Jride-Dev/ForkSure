@@ -8,13 +8,14 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from .compare_scanner import compare_repositories
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .imposter_scanner import scan_imposters
 from .license_scanner import compare_licenses
 from .rare_string_scanner import merge_rare_string_matches, scan_rare_string_matches
 from .readme_scanner import compare_readme_attribution
-from .reports import IMPOSTER_DISCLAIMER, render_forks, write_imposter_html_report
+from .reports import COMPARE_DISCLAIMER, IMPOSTER_DISCLAIMER, render_forks, write_compare_html_report, write_imposter_html_report
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
@@ -103,6 +104,38 @@ def forks(
         source_readme=source_readme,
         readme_results=readme_results,
     )
+
+
+@app.command()
+def compare(
+    source_repo: str = typer.Argument(..., help="Source repository in owner/repo format."),
+    candidate_repo: str = typer.Argument(..., help="Candidate repository in owner/repo format."),
+    html: bool = typer.Option(False, "--html", help="Generate an HTML comparison report in the reports/ directory."),
+    open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
+    out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+) -> None:
+    """Compare two GitHub repositories using metadata, license, and README signals."""
+    try:
+        result = compare_repositories(source_repo, candidate_repo, GitHubClient())
+    except InvalidOwnerRepoError as exc:
+        console.print(f"[red]Invalid repository:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+    except GitHubNotFoundError as exc:
+        console.print(f"[red]Repository not found:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubRateLimitError as exc:
+        console.print(f"[red]Rate limited:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubAPIError as exc:
+        console.print(f"[red]GitHub error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    _render_compare_result(result)
+    if html or open_report or out is not None:
+        report_path = write_compare_html_report(result, out or _default_compare_report_path(source_repo, candidate_repo))
+        console.print(f"HTML report written to: {report_path}")
+        if open_report:
+            _open_html_report(report_path)
 
 
 @app.command()
@@ -284,6 +317,61 @@ def _render_imposter_candidates(candidates: list[dict]) -> None:
     console.print(table)
 
 
+def _render_compare_result(result: dict) -> None:
+    source = result.get("source") if isinstance(result.get("source"), dict) else {}
+    candidate = result.get("candidate") if isinstance(result.get("candidate"), dict) else {}
+    name_similarity = result.get("name_similarity") if isinstance(result.get("name_similarity"), dict) else {}
+    license_comparison = result.get("license_comparison") if isinstance(result.get("license_comparison"), dict) else {}
+    readme_comparison = result.get("readme_comparison") if isinstance(result.get("readme_comparison"), dict) else {}
+    reasons = result.get("reasons")
+
+    console.print(f"[yellow]{COMPARE_DISCLAIMER}[/yellow]")
+    console.print(f"Source repo: [bold]{source.get('full_name', '-')}[/bold]")
+    console.print(f"Candidate repo: [bold]{candidate.get('full_name', '-')}[/bold]")
+    console.print(f"Overall risk: [bold]{result.get('overall_risk', 'INFO')}[/bold]")
+
+    table = Table(title="Repository Compare", show_lines=False, box=box.SIMPLE)
+    table.add_column("Signal", style="bold", overflow="fold")
+    table.add_column("Status", overflow="fold")
+    table.add_column("Details", overflow="fold")
+    table.add_row(
+        "Name similarity",
+        f"{name_similarity.get('score', 0)} ({name_similarity.get('risk_level', 'INFO')})",
+        _join_reasons(name_similarity.get("reasons")),
+    )
+    table.add_row(
+        "License",
+        f"{license_comparison.get('status', 'unknown')} ({str(license_comparison.get('severity', 'low')).upper()})",
+        str(license_comparison.get("summary") or "-"),
+    )
+    table.add_row(
+        "README attribution",
+        f"{readme_comparison.get('status', 'unknown')} ({str(readme_comparison.get('severity', 'low')).upper()})",
+        str(readme_comparison.get("summary") or "-"),
+    )
+    table.add_row(
+        "Metadata",
+        "candidate fork: yes" if candidate.get("fork") else "candidate fork: no",
+        (
+            f"Source stars: {source.get('stargazers_count', 0)}; "
+            f"candidate stars: {candidate.get('stargazers_count', 0)}; "
+            f"candidate branch: {candidate.get('default_branch', '-')}"
+        ),
+    )
+    console.print(table)
+
+    if isinstance(reasons, list) and reasons:
+        console.print("Reasons:")
+        for reason in reasons:
+            console.print(f"- {reason}")
+
+
+def _join_reasons(value: object) -> str:
+    if not isinstance(value, list) or not value:
+        return "-"
+    return "; ".join(str(item) for item in value)
+
+
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
     table = Table(title=title, show_lines=False)
     table.add_column("Severity", style="bold")
@@ -315,6 +403,19 @@ def _default_imposter_report_path(owner_repo: str) -> Path:
     while "--" in safe_name:
         safe_name = safe_name.replace("--", "-")
     return Path("reports") / f"{safe_name or 'imposter-scan'}-imposters.html"
+
+
+def _default_compare_report_path(source_repo: str, candidate_repo: str) -> Path:
+    source_name = _safe_report_name(source_repo)
+    candidate_name = _safe_report_name(candidate_repo)
+    return Path("reports") / f"compare-{source_name}-vs-{candidate_name}.html"
+
+
+def _safe_report_name(value: str) -> str:
+    safe_name = "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-")
+    while "--" in safe_name:
+        safe_name = safe_name.replace("--", "-")
+    return safe_name or "repository"
 
 
 def _open_html_report(report_path: Path) -> None:
