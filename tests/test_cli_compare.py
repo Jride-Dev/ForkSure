@@ -19,6 +19,20 @@ def test_cli_compare_command_renders_output(monkeypatch) -> None:
     assert "missing-attribution" in result.output
 
 
+def test_cli_compare_accepts_similarity(monkeypatch) -> None:
+    monkeypatch.setattr("forksure.cli.compare_repositories", lambda source, candidate, github_client: _comparison())
+    monkeypatch.setattr("forksure.cli.scan_repository_similarity", lambda source, candidate: _similarity())
+    monkeypatch.setattr("forksure.cli.console", Console(width=180))
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["compare", "Jride-Dev/ForkSure", "other/ForkSure", "--similarity"])
+
+    assert result.exit_code == 0
+    assert "Similarity Evidence" in result.output
+    assert "Overall similarity score" in result.output
+    assert "README.md" in result.output
+
+
 def _comparison() -> dict:
     return {
         "source": {
@@ -63,4 +77,36 @@ def _comparison() -> dict:
         "metadata_summary": {},
         "overall_risk": "HIGH",
         "reasons": ["Same or similar name with missing README attribution; manual review recommended."],
+    }
+
+
+def _similarity() -> dict:
+    return {
+        "source_repo": "Jride-Dev/ForkSure",
+        "candidate_repo": "other/ForkSure",
+        "exact_file_matches": [
+            {
+                "source_path": "README.md",
+                "candidate_path": "README.md",
+                "sha256": "abc",
+                "match_type": "same-path",
+            }
+        ],
+        "matching_paths": [{"path": "README.md", "same_hash": True}],
+        "source_file_count": 3,
+        "candidate_file_count": 2,
+        "shared_path_count": 1,
+        "exact_hash_match_count": 1,
+        "directory_similarity_score": 33,
+        "exact_content_similarity_score": 33,
+        "overall_similarity_score": 33,
+        "top_matches": [
+            {
+                "source_path": "README.md",
+                "candidate_path": "README.md",
+                "sha256": "abc",
+                "match_type": "same-path",
+            }
+        ],
+        "ignored_paths_summary": {},
     }

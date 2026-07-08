@@ -173,6 +173,7 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
     name_similarity = _mapping_or_empty(comparison.get("name_similarity"))
     license_comparison = _mapping_or_empty(comparison.get("license_comparison"))
     readme_comparison = _mapping_or_empty(comparison.get("readme_comparison"))
+    similarity = comparison.get("similarity")
     overall_risk = str(comparison.get("overall_risk") or "INFO")
     reasons = comparison.get("reasons")
 
@@ -285,6 +286,23 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
       .section {{
         margin-top: 22px;
       }}
+      table {{
+        border-collapse: collapse;
+        margin-top: 10px;
+        width: 100%;
+      }}
+      th, td {{
+        border-bottom: 1px solid #e5e7eb;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }}
+      th {{
+        background: #eef2f7;
+        color: #334155;
+        font-size: 13px;
+      }}
     </style>
   </head>
   <body>
@@ -317,6 +335,7 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
         ("Summary", str(readme_comparison.get("summary") or "-")),
     ])}
       </section>
+{_similarity_section(similarity)}
     </main>
   </body>
 </html>
@@ -365,6 +384,48 @@ def _html_list(values: object) -> str:
         return "<p>-</p>"
     items = "".join(f"<li>{escape(str(value))}</li>" for value in values)
     return f"<ul>{items}</ul>"
+
+
+def _similarity_section(similarity: object) -> str:
+    if not isinstance(similarity, Mapping):
+        return ""
+    top_matches = similarity.get("top_matches")
+    rows = ""
+    if isinstance(top_matches, list) and top_matches:
+        rows = "\n".join(_similarity_match_row(match) for match in top_matches[:20] if isinstance(match, Mapping))
+    matches_html = (
+        f"""          <table>
+            <thead>
+              <tr><th>Source path</th><th>Candidate path</th><th>Type</th></tr>
+            </thead>
+            <tbody>
+{rows}
+            </tbody>
+          </table>"""
+        if rows
+        else "          <p>No exact file matches found.</p>"
+    )
+    return f"""      <section class="section similarity-evidence">
+        <h2>Similarity Evidence</h2>
+        <p class="disclaimer">Clone-based similarity evidence is for manual review and is not an accusation.</p>
+        <dl>
+          <dt>Overall score</dt><dd>{escape(str(similarity.get("overall_similarity_score") or 0))}</dd>
+          <dt>Exact file matches</dt><dd>{escape(str(similarity.get("exact_hash_match_count") or 0))}</dd>
+          <dt>Shared paths</dt><dd>{escape(str(similarity.get("shared_path_count") or 0))}</dd>
+          <dt>Source file count</dt><dd>{escape(str(similarity.get("source_file_count") or 0))}</dd>
+          <dt>Candidate file count</dt><dd>{escape(str(similarity.get("candidate_file_count") or 0))}</dd>
+        </dl>
+        <h3>Top matching files</h3>
+{matches_html}
+      </section>"""
+
+
+def _similarity_match_row(match: Mapping[str, Any]) -> str:
+    return f"""              <tr>
+                <td>{escape(str(match.get("source_path") or "-"))}</td>
+                <td>{escape(str(match.get("candidate_path") or "-"))}</td>
+                <td>{escape(str(match.get("match_type") or "-"))}</td>
+              </tr>"""
 
 
 def _risk_class(risk: str) -> str:

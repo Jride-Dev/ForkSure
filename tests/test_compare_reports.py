@@ -14,6 +14,7 @@ def test_compare_html_report_is_created(tmp_path) -> None:
     assert "Jride-Dev/ForkSure" in html
     assert "other/ForkSure" in html
     assert "missing-attribution" in html
+    assert "Similarity Evidence" not in html
 
 
 def test_compare_html_report_escapes_dynamic_text(tmp_path) -> None:
@@ -28,6 +29,33 @@ def test_compare_html_report_escapes_dynamic_text(tmp_path) -> None:
     html = output_path.read_text(encoding="utf-8")
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_compare_html_report_includes_similarity_section_when_present(tmp_path) -> None:
+    output_path = tmp_path / "compare.html"
+    comparison = _comparison()
+    comparison["similarity"] = _similarity()
+
+    write_compare_html_report(comparison, output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "Similarity Evidence" in html
+    assert "Overall score" in html
+    assert "README.md" in html
+    assert "Clone-based similarity evidence is for manual review" in html
+
+
+def test_compare_html_report_escapes_similarity_paths(tmp_path) -> None:
+    output_path = tmp_path / "compare.html"
+    comparison = _comparison()
+    comparison["similarity"] = _similarity()
+    comparison["similarity"]["top_matches"][0]["source_path"] = "docs/<script>.md"
+
+    write_compare_html_report(comparison, output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "<script>" not in html
+    assert "docs/&lt;script&gt;.md" in html
 
 
 def _comparison() -> dict:
@@ -74,4 +102,36 @@ def _comparison() -> dict:
         "metadata_summary": {},
         "overall_risk": "HIGH",
         "reasons": ["Same or similar name with missing README attribution; manual review recommended."],
+    }
+
+
+def _similarity() -> dict:
+    return {
+        "source_repo": "Jride-Dev/ForkSure",
+        "candidate_repo": "other/ForkSure",
+        "exact_file_matches": [
+            {
+                "source_path": "README.md",
+                "candidate_path": "README.md",
+                "sha256": "abc",
+                "match_type": "same-path",
+            }
+        ],
+        "matching_paths": [{"path": "README.md", "same_hash": True}],
+        "source_file_count": 3,
+        "candidate_file_count": 2,
+        "shared_path_count": 1,
+        "exact_hash_match_count": 1,
+        "directory_similarity_score": 33,
+        "exact_content_similarity_score": 33,
+        "overall_similarity_score": 33,
+        "top_matches": [
+            {
+                "source_path": "README.md",
+                "candidate_path": "README.md",
+                "sha256": "abc",
+                "match_type": "same-path",
+            }
+        ],
+        "ignored_paths_summary": {},
     }

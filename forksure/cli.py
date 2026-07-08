@@ -24,6 +24,7 @@ from .security.sast import scan_sast
 from .security.scoring import calculate_security_score
 from .security.secrets import scan_secrets
 from .security.scripts import scan_unsafe_scripts
+from .similarity_scanner import SimilarityScanError, scan_repository_similarity
 
 
 app = typer.Typer(
@@ -113,13 +114,20 @@ def compare(
     html: bool = typer.Option(False, "--html", help="Generate an HTML comparison report in the reports/ directory."),
     open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
     out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+    clone: bool = typer.Option(False, "--clone", help="Clone repositories before comparison."),
+    similarity: bool = typer.Option(False, "--similarity", help="Compare cloned file paths and exact file hashes."),
 ) -> None:
     """Compare two GitHub repositories using metadata, license, and README signals."""
     try:
         result = compare_repositories(source_repo, candidate_repo, GitHubClient())
+        if clone or similarity:
+            result["similarity"] = scan_repository_similarity(source_repo, candidate_repo)
     except InvalidOwnerRepoError as exc:
         console.print(f"[red]Invalid repository:[/red] {exc}")
         raise typer.Exit(code=2) from exc
+    except SimilarityScanError as exc:
+        console.print(f"[red]Similarity scan failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
     except GitHubNotFoundError as exc:
         console.print(f"[red]Repository not found:[/red] {exc}")
         raise typer.Exit(code=1) from exc
@@ -359,6 +367,9 @@ def _render_compare_result(result: dict) -> None:
         ),
     )
     console.print(table)
+    similarity = result.get("similarity")
+    if isinstance(similarity, dict):
+        _render_similarity_result(similarity)
 
     if isinstance(reasons, list) and reasons:
         console.print("Reasons:")
@@ -370,6 +381,34 @@ def _join_reasons(value: object) -> str:
     if not isinstance(value, list) or not value:
         return "-"
     return "; ".join(str(item) for item in value)
+
+
+def _render_similarity_result(similarity: dict) -> None:
+    table = Table(title="Similarity Evidence", show_lines=False, box=box.SIMPLE)
+    table.add_column("Metric", style="bold", overflow="fold")
+    table.add_column("Value", overflow="fold")
+    table.add_row("Overall similarity score", f"{similarity.get('overall_similarity_score', 0)}")
+    table.add_row("Exact hash matches", str(similarity.get("exact_hash_match_count", 0)))
+    table.add_row("Shared paths", str(similarity.get("shared_path_count", 0)))
+    table.add_row("Source file count", str(similarity.get("source_file_count", 0)))
+    table.add_row("Candidate file count", str(similarity.get("candidate_file_count", 0)))
+    console.print(table)
+
+    top_matches = similarity.get("top_matches")
+    if isinstance(top_matches, list) and top_matches:
+        match_table = Table(title="Top Matching Files", show_lines=False, box=box.SIMPLE)
+        match_table.add_column("Source path", overflow="fold")
+        match_table.add_column("Candidate path", overflow="fold")
+        match_table.add_column("Type", overflow="fold")
+        for match in top_matches[:10]:
+            if not isinstance(match, dict):
+                continue
+            match_table.add_row(
+                str(match.get("source_path") or "-"),
+                str(match.get("candidate_path") or "-"),
+                str(match.get("match_type") or "-"),
+            )
+        console.print(match_table)
 
 
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
