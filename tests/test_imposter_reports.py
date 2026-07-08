@@ -61,11 +61,14 @@ def test_imposter_html_report_keeps_long_readme_excerpt_readable(tmp_path) -> No
     write_imposter_html_report("Jride-Dev/ForkSure", [candidate], output_path)
 
     html = output_path.read_text(encoding="utf-8")
+    compact_html = html.replace(" ", "")
     assert "First line\nSecond line with more evidence\nThird line" in html
     assert "white-space: pre-wrap" in html
     assert "max-width: 100%" in html
-    assert "overflow: hidden" not in html
+    assert "overflow:hidden" not in compact_html
     assert "line-clamp" not in html
+    assert "text-overflow" not in html
+    assert "max-height" not in html
 
 
 def test_imposter_html_report_marks_truncated_readme_excerpt(tmp_path) -> None:

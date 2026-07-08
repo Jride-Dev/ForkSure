@@ -318,6 +318,7 @@ def _imposter_report_html(owner_repo: str, candidates: list[dict], timestamp: st
         font-weight: 700;
       }}
       .readme-block pre {{
+        box-sizing: border-box;
         font-family: Consolas, "Courier New", monospace;
         font-size: 13px;
         max-width: 100%;
