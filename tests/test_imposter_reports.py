@@ -63,6 +63,7 @@ def test_imposter_html_report_keeps_long_readme_excerpt_readable(tmp_path) -> No
     html = output_path.read_text(encoding="utf-8")
     assert "First line\nSecond line with more evidence\nThird line" in html
     assert "white-space: pre-wrap" in html
+    assert "max-width: 100%" in html
     assert "overflow: hidden" not in html
     assert "line-clamp" not in html
 
