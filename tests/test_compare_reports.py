@@ -14,6 +14,9 @@ def test_compare_html_report_is_created(tmp_path) -> None:
     assert "Jride-Dev/ForkSure" in html
     assert "other/ForkSure" in html
     assert "missing-attribution" in html
+    assert "Risk Breakdown" in html
+    assert "Code similarity" in html
+    assert "not scanned" in html
     assert "Similarity Evidence" not in html
 
 
@@ -43,6 +46,20 @@ def test_compare_html_report_includes_similarity_section_when_present(tmp_path) 
     assert "Overall score" in html
     assert "README.md" in html
     assert "Clone-based similarity evidence is for manual review" in html
+
+
+def test_compare_html_report_includes_risk_breakdown(tmp_path) -> None:
+    output_path = tmp_path / "compare.html"
+
+    write_compare_html_report(_comparison(), output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "Risk Breakdown" in html
+    assert "Name / imposter" in html
+    assert "README attribution" in html
+    assert "License" in html
+    assert "Code similarity" in html
+    assert "Security" in html
 
 
 def test_compare_html_report_escapes_similarity_paths(tmp_path) -> None:
@@ -100,6 +117,41 @@ def _comparison() -> dict:
             "summary": "Candidate README does not mention obvious upstream attribution.",
         },
         "metadata_summary": {},
+        "risk_breakdown": {
+            "overall": {
+                "risk_level": "HIGH",
+                "summary": "Overall risk is HIGH due to Name / imposter, README attribution.",
+                "reasons": [
+                    "Name / imposter: Exact repository name match under a different owner.",
+                    "README attribution: README attribution is missing while name similarity is strong.",
+                ],
+            },
+            "name": {
+                "risk_level": "HIGH",
+                "summary": "Exact repository name match under a different owner.",
+                "reasons": ["Exact repository name match under a different owner."],
+            },
+            "readme": {
+                "risk_level": "HIGH",
+                "summary": "README attribution is missing while name similarity is strong.",
+                "reasons": ["Candidate README does not mention obvious upstream attribution."],
+            },
+            "license": {
+                "risk_level": "INFO",
+                "summary": "Fork license matches source license MIT.",
+                "reasons": ["Fork license matches source license MIT."],
+            },
+            "similarity": {
+                "risk_level": "not scanned",
+                "summary": "Code similarity was not requested.",
+                "reasons": [],
+            },
+            "security": {
+                "risk_level": "not scanned",
+                "summary": "Security scanning is not part of repository compare yet.",
+                "reasons": [],
+            },
+        },
         "overall_risk": "HIGH",
         "reasons": ["Same or similar name with missing README attribution; manual review recommended."],
     }

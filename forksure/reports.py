@@ -174,6 +174,7 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
     license_comparison = _mapping_or_empty(comparison.get("license_comparison"))
     readme_comparison = _mapping_or_empty(comparison.get("readme_comparison"))
     similarity = comparison.get("similarity")
+    risk_breakdown = _mapping_or_empty(comparison.get("risk_breakdown"))
     overall_risk = str(comparison.get("overall_risk") or "INFO")
     reasons = comparison.get("reasons")
 
@@ -262,6 +263,10 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
         background: #e0f2fe;
         color: #075985;
       }}
+      .risk-notscanned {{
+        background: #f1f5f9;
+        color: #475569;
+      }}
       dl {{
         display: grid;
         gap: 8px 14px;
@@ -314,6 +319,7 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
         <h2>Overall Risk <span class="risk risk-{escape(_risk_class(overall_risk))}">{escape(overall_risk)}</span></h2>
         {_html_list(reasons)}
       </section>
+{_risk_breakdown_section(risk_breakdown)}
       <section class="repo-grid" aria-label="Repository metadata">
 {_compare_repo_card("Source repo", source)}
 {_compare_repo_card("Candidate repo", candidate)}
@@ -384,6 +390,42 @@ def _html_list(values: object) -> str:
         return "<p>-</p>"
     items = "".join(f"<li>{escape(str(value))}</li>" for value in values)
     return f"<ul>{items}</ul>"
+
+
+def _risk_breakdown_section(risk_breakdown: Mapping[str, Any]) -> str:
+    labels = {
+        "name": "Name / imposter",
+        "readme": "README attribution",
+        "license": "License",
+        "similarity": "Code similarity",
+        "security": "Security",
+    }
+    rows = []
+    for key, label in labels.items():
+        item = _mapping_or_empty(risk_breakdown.get(key))
+        if not item:
+            continue
+        risk = str(item.get("risk_level") or "INFO")
+        rows.append(
+            f"""              <tr>
+                <th scope="row">{escape(label)}</th>
+                <td><span class="risk risk-{escape(_risk_class(risk))}">{escape(risk)}</span></td>
+                <td>{escape(str(item.get("summary") or "-"))}</td>
+              </tr>"""
+        )
+    if not rows:
+        return ""
+    return f"""      <section class="section risk-breakdown">
+        <h2>Risk Breakdown</h2>
+        <table>
+          <thead>
+            <tr><th>Signal</th><th>Risk</th><th>Summary</th></tr>
+          </thead>
+          <tbody>
+{"".join(rows)}
+          </tbody>
+        </table>
+      </section>"""
 
 
 def _similarity_section(similarity: object) -> str:

@@ -8,7 +8,7 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from .compare_scanner import compare_repositories
+from .compare_scanner import add_similarity_to_comparison, compare_repositories
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .imposter_scanner import scan_imposters
@@ -121,7 +121,7 @@ def compare(
     try:
         result = compare_repositories(source_repo, candidate_repo, GitHubClient())
         if clone or similarity:
-            result["similarity"] = scan_repository_similarity(source_repo, candidate_repo)
+            result = add_similarity_to_comparison(result, scan_repository_similarity(source_repo, candidate_repo))
     except InvalidOwnerRepoError as exc:
         console.print(f"[red]Invalid repository:[/red] {exc}")
         raise typer.Exit(code=2) from exc
@@ -367,6 +367,8 @@ def _render_compare_result(result: dict) -> None:
         ),
     )
     console.print(table)
+    _render_risk_breakdown(result.get("risk_breakdown"))
+
     similarity = result.get("similarity")
     if isinstance(similarity, dict):
         _render_similarity_result(similarity)
@@ -381,6 +383,33 @@ def _join_reasons(value: object) -> str:
     if not isinstance(value, list) or not value:
         return "-"
     return "; ".join(str(item) for item in value)
+
+
+def _render_risk_breakdown(risk_breakdown: object) -> None:
+    if not isinstance(risk_breakdown, dict):
+        return
+
+    labels = {
+        "name": "Name / imposter",
+        "readme": "README attribution",
+        "license": "License",
+        "similarity": "Code similarity",
+        "security": "Security",
+    }
+    table = Table(title="Risk Breakdown", show_lines=False, box=box.SIMPLE)
+    table.add_column("Signal", style="bold", overflow="fold")
+    table.add_column("Risk", overflow="fold")
+    table.add_column("Summary", overflow="fold")
+    for key, label in labels.items():
+        item = risk_breakdown.get(key)
+        if not isinstance(item, dict):
+            continue
+        table.add_row(
+            label,
+            str(item.get("risk_level") or "INFO"),
+            str(item.get("summary") or "-"),
+        )
+    console.print(table)
 
 
 def _render_similarity_result(similarity: dict) -> None:
