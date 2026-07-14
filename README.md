@@ -25,6 +25,12 @@ python -m pytest -q
 `uv.lock` is committed so dependency scanners such as Aikido can inspect the
 resolved dependency graph.
 
+## Website
+
+The static project website lives in [site/](site/). GitHub Pages can deploy it
+with the workflow in [.github/workflows/pages.yml](.github/workflows/pages.yml).
+A custom domain can be configured later in the repository Pages settings.
+
 ## License
 
 ForkSure is licensed under the MIT License. See [LICENSE](LICENSE).

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">ForkSure mark</title>
+  <desc id="desc">A simple shield and fork path mark for ForkSure.</desc>
+  <rect width="64" height="64" rx="14" fill="#0f6b7f"/>
+  <path d="M32 9 50 16v14c0 11.6-7.4 21.9-18 25.7C21.4 51.9 14 41.6 14 30V16l18-7Z" fill="#edf7f9"/>
+  <path d="M32 16 44 20.7V30c0 7.7-4.6 14.7-12 18-7.4-3.3-12-10.3-12-18v-9.3L32 16Z" fill="#b8e3ea"/>
+  <path d="M26 22a4 4 0 1 0-2 3.5v11a6 6 0 0 0 6 6h1v-4h-1a2 2 0 0 1-2-2v-4h8a6 6 0 0 0 6-6v-1.1a4 4 0 1 0-4 0V26a2 2 0 0 1-2 2h-8v-2.5a4 4 0 0 0-2-3.5Z" fill="#0b4f61"/>
+</svg>

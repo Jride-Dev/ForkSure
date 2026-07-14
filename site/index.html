@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ForkSure - Repository provenance and safety scanner</title>
+    <meta
+      name="description"
+      content="ForkSure audits forks, imposters, license drift, attribution removal, code similarity, and repository safety signals."
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="ForkSure home">
+        <img src="assets/forksure-mark.svg" alt="" width="34" height="34">
+        <span>ForkSure</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#commands">Commands</a>
+        <a href="#install">Install</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Open-source repository provenance tooling</p>
+          <h1 id="hero-title">ForkSure</h1>
+          <p class="subtitle">Repository provenance and safety scanner</p>
+          <p class="tagline">
+            Audit forks, imposters, license drift, attribution removal, code similarity,
+            and repo safety signals.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
+            <a class="button secondary" href="#commands">See example commands</a>
+          </div>
+        </div>
+        <div class="hero-panel" aria-label="ForkSure signal summary">
+          <div class="signal-row">
+            <span>Fork audits</span>
+            <strong>License + README</strong>
+          </div>
+          <div class="signal-row">
+            <span>Imposter candidates</span>
+            <strong>Name + rare strings</strong>
+          </div>
+          <div class="signal-row">
+            <span>Repository compare</span>
+            <strong>Metadata + similarity</strong>
+          </div>
+          <div class="signal-row">
+            <span>Local safety checks</span>
+            <strong>Scripts + wrappers</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="section two-column" id="what">
+        <div>
+          <h2>What ForkSure Does</h2>
+          <p>
+            ForkSure is a Python CLI that gathers repository evidence from GitHub and
+            local project files. It helps reviewers inspect fork provenance, attribution,
+            license drift, suspicious name similarity, exact code similarity, and basic
+            safety signals.
+          </p>
+        </div>
+        <div>
+          <h2>Why It Exists</h2>
+          <p>
+            Public repositories are easy to fork, rename, mirror, and imitate. ForkSure
+            keeps the first pass practical: collect evidence, show the risk signals
+            separately, and leave conclusions to a human reviewer.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="section-heading">
+          <p class="eyebrow">Core features</p>
+          <h2>Focused Signals, Readable Output</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="card">
+            <h3>Fork Audits</h3>
+            <p>List forks and compare license and README attribution against the source repository.</p>
+          </article>
+          <article class="card">
+            <h3>Imposter Scan</h3>
+            <p>Find same-name and similar-name repositories, enrich candidates, and produce HTML evidence reports.</p>
+          </article>
+          <article class="card">
+            <h3>Rare-String Discovery</h3>
+            <p>Search for uncommon README phrases to surface additional repositories worth reviewing.</p>
+          </article>
+          <article class="card">
+            <h3>Repository Compare</h3>
+            <p>Compare two repositories using metadata, license, README attribution, and optional clone similarity.</p>
+          </article>
+          <article class="card">
+            <h3>Safety Wrappers</h3>
+            <p>Run local checks for unsafe scripts, secrets, SAST, dependency hygiene, and OSV when tools are available.</p>
+          </article>
+          <article class="card">
+            <h3>HTML Reports</h3>
+            <p>Generate static reports that are easier to review than a wide terminal table.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="commands">
+        <div class="section-heading">
+          <p class="eyebrow">Example CLI usage</p>
+          <h2>Run Targeted Scans</h2>
+        </div>
+        <div class="command-list">
+          <pre><code>python -m forksure.cli forks OWNER/REPO --audit-license --audit-readme</code></pre>
+          <pre><code>python -m forksure.cli imposters OWNER/REPO --rare-strings --html</code></pre>
+          <pre><code>python -m forksure.cli compare OWNER/REPO OTHER/REPO --similarity --html</code></pre>
+          <pre><code>python -m forksure.cli security audit .</code></pre>
+        </div>
+      </section>
+
+      <section class="section two-column" id="risk">
+        <div>
+          <h2>Risk Model</h2>
+          <p>
+            ForkSure separates risk signals instead of flattening everything into one
+            vague score. Compare reports show overall risk alongside name/imposter,
+            README attribution, license, code similarity, and security categories.
+          </p>
+        </div>
+        <div>
+          <h2>HTML Reports</h2>
+          <p>
+            Imposter and repository compare commands can write self-contained HTML
+            reports with evidence, links, reasons, and neutral language for manual review.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <div class="section-heading">
+          <p class="eyebrow">Installation</p>
+          <h2>Development Setup</h2>
+        </div>
+        <pre><code>python -m pip install uv
+uv sync
+python -m pytest -q</code></pre>
+        <p class="note">
+          Set <code>GITHUB_TOKEN</code> for higher GitHub API limits when scanning public repositories.
+        </p>
+      </section>
+
+      <section class="section disclaimer" id="disclaimer">
+        <h2>Disclaimer</h2>
+        <p>
+          ForkSure produces evidence for manual review. It does not determine ownership,
+          intent, copyright infringement, or malicious behavior.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>ForkSure</span>
+      <a href="https://github.com/Jride-Dev/ForkSure">GitHub repository</a>
+    </footer>
+  </body>
+</html>
