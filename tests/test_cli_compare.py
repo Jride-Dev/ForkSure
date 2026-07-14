@@ -5,7 +5,10 @@ from forksure.cli import app
 
 
 def test_cli_compare_command_renders_output(monkeypatch) -> None:
-    monkeypatch.setattr("forksure.cli.compare_repositories", lambda source, candidate, github_client: _comparison())
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _comparison(),
+    )
     monkeypatch.setattr("forksure.cli.console", Console(width=180))
     runner = CliRunner()
 
@@ -21,7 +24,10 @@ def test_cli_compare_command_renders_output(monkeypatch) -> None:
 
 
 def test_cli_compare_accepts_similarity(monkeypatch) -> None:
-    monkeypatch.setattr("forksure.cli.compare_repositories", lambda source, candidate, github_client: _comparison())
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _comparison(),
+    )
     monkeypatch.setattr("forksure.cli.scan_repository_similarity", lambda source, candidate: _similarity())
     monkeypatch.setattr("forksure.cli.console", Console(width=180))
     runner = CliRunner()
@@ -32,6 +38,33 @@ def test_cli_compare_accepts_similarity(monkeypatch) -> None:
     assert "Similarity Evidence" in result.output
     assert "Overall similarity score" in result.output
     assert "README.md" in result.output
+
+
+def test_cli_compare_accepts_security(monkeypatch) -> None:
+    seen: dict[str, bool] = {}
+
+    def fake_compare(source, candidate, github_client, include_security=False):
+        seen["include_security"] = include_security
+        comparison = _comparison()
+        comparison["source_security"] = _security_summary("Jride-Dev/ForkSure")
+        comparison["candidate_security"] = _security_summary("other/ForkSure")
+        comparison["risk_breakdown"]["security"] = {
+            "risk_level": "INFO",
+            "summary": "Security audit score 0/100; only informational findings.",
+            "reasons": ["Security audit score 0/100; only informational findings."],
+        }
+        return comparison
+
+    monkeypatch.setattr("forksure.cli.compare_repositories", fake_compare)
+    monkeypatch.setattr("forksure.cli.console", Console(width=180))
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["compare", "Jride-Dev/ForkSure", "other/ForkSure", "--security"])
+
+    assert result.exit_code == 0
+    assert seen["include_security"] is True
+    assert "Security Audit" in result.output
+    assert "Top Candidate Security Findings" in result.output
 
 
 def _comparison() -> dict:
@@ -113,6 +146,30 @@ def _comparison() -> dict:
         },
         "overall_risk": "HIGH",
         "reasons": ["Same or similar name with missing README attribution; manual review recommended."],
+    }
+
+
+def _security_summary(repo: str) -> dict:
+    return {
+        "repo": repo,
+        "local_path": ".forksure-cache/repos/repo",
+        "score": 0,
+        "risk_level": "INFO",
+        "finding_count": 1,
+        "counts_by_severity": {"info": 1, "low": 0, "medium": 0, "high": 0, "critical": 0},
+        "top_findings": [
+            {
+                "id": "gitleaks-unavailable",
+                "category": "secret",
+                "severity": "info",
+                "title": "Gitleaks unavailable",
+                "description": "Install Gitleaks to enable secret scanning.",
+                "file_path": None,
+                "line": None,
+                "source_tool": "gitleaks",
+            }
+        ],
+        "unavailable_tool_info_findings": [],
     }
 
 

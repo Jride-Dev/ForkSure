@@ -174,6 +174,8 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
     license_comparison = _mapping_or_empty(comparison.get("license_comparison"))
     readme_comparison = _mapping_or_empty(comparison.get("readme_comparison"))
     similarity = comparison.get("similarity")
+    source_security = comparison.get("source_security")
+    candidate_security = comparison.get("candidate_security")
     risk_breakdown = _mapping_or_empty(comparison.get("risk_breakdown"))
     overall_risk = str(comparison.get("overall_risk") or "INFO")
     reasons = comparison.get("reasons")
@@ -250,6 +252,10 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
       .risk-high {{
         background: #fee2e2;
         color: #991b1b;
+      }}
+      .risk-critical {{
+        background: #7f1d1d;
+        color: #ffffff;
       }}
       .risk-medium {{
         background: #ffedd5;
@@ -342,6 +348,7 @@ def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
     ])}
       </section>
 {_similarity_section(similarity)}
+{_security_section(source_security, candidate_security)}
     </main>
   </body>
 </html>
@@ -460,6 +467,73 @@ def _similarity_section(similarity: object) -> str:
         <h3>Top matching files</h3>
 {matches_html}
       </section>"""
+
+
+def _security_section(source_security: object, candidate_security: object) -> str:
+    if not isinstance(source_security, Mapping) or not isinstance(candidate_security, Mapping):
+        return ""
+
+    candidate_findings = candidate_security.get("top_findings")
+    source_findings = source_security.get("top_findings")
+    return f"""      <section class="section security-evidence">
+        <h2>Security Evidence</h2>
+        <p class="disclaimer">Unavailable scanner entries are informational and do not increase risk.</p>
+        <div class="summary-grid" aria-label="Security audit summaries">
+{_security_summary_card("Source security", source_security)}
+{_security_summary_card("Candidate security", candidate_security)}
+        </div>
+{_security_findings_table("Candidate top findings", candidate_findings)}
+{_security_findings_table("Source top findings", source_findings)}
+      </section>"""
+
+
+def _security_summary_card(title: str, security: Mapping[str, Any]) -> str:
+    return _compare_status_card(
+        title,
+        [
+            ("Repository", str(security.get("repo") or "-")),
+            ("Score", f"{security.get('score', 0)}/100"),
+            ("Risk", str(security.get("risk_level") or "INFO")),
+            ("Findings", str(security.get("finding_count") or 0)),
+        ],
+    )
+
+
+def _security_findings_table(title: str, findings: object) -> str:
+    if not isinstance(findings, list) or not findings:
+        return f"""        <section class="section">
+          <h3>{escape(title)}</h3>
+          <p>No findings to show.</p>
+        </section>"""
+
+    rows = "\n".join(
+        _security_finding_row(finding)
+        for finding in findings[:10]
+        if isinstance(finding, Mapping)
+    )
+    if not rows:
+        return ""
+    return f"""        <section class="section">
+          <h3>{escape(title)}</h3>
+          <table>
+            <thead>
+              <tr><th>Severity</th><th>Category</th><th>File</th><th>Line</th><th>Title</th></tr>
+            </thead>
+            <tbody>
+{rows}
+            </tbody>
+          </table>
+        </section>"""
+
+
+def _security_finding_row(finding: Mapping[str, Any]) -> str:
+    return f"""              <tr>
+                <td>{escape(str(finding.get("severity") or "info").upper())}</td>
+                <td>{escape(str(finding.get("category") or "-"))}</td>
+                <td>{escape(str(finding.get("file_path") or "-"))}</td>
+                <td>{escape(str(finding.get("line") or "-"))}</td>
+                <td>{escape(str(finding.get("title") or "-"))}</td>
+              </tr>"""
 
 
 def _similarity_match_row(match: Mapping[str, Any]) -> str:

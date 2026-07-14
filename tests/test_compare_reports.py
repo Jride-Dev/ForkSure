@@ -18,6 +18,7 @@ def test_compare_html_report_is_created(tmp_path) -> None:
     assert "Code similarity" in html
     assert "not scanned" in html
     assert "Similarity Evidence" not in html
+    assert "Security Evidence" not in html
 
 
 def test_compare_html_report_escapes_dynamic_text(tmp_path) -> None:
@@ -73,6 +74,28 @@ def test_compare_html_report_escapes_similarity_paths(tmp_path) -> None:
     html = output_path.read_text(encoding="utf-8")
     assert "<script>" not in html
     assert "docs/&lt;script&gt;.md" in html
+
+
+def test_compare_html_report_includes_security_evidence_when_present(tmp_path) -> None:
+    output_path = tmp_path / "compare.html"
+    comparison = _comparison()
+    comparison["source_security"] = _security_summary("Jride-Dev/ForkSure")
+    comparison["candidate_security"] = _security_summary("other/ForkSure")
+    comparison["candidate_security"]["top_findings"][0]["title"] = "Unsafe <script> title"
+    comparison["risk_breakdown"]["security"] = {
+        "risk_level": "INFO",
+        "summary": "Security audit score 0/100; only informational findings.",
+        "reasons": ["Security audit score 0/100; only informational findings."],
+    }
+
+    write_compare_html_report(comparison, output_path)
+
+    html = output_path.read_text(encoding="utf-8")
+    assert "Security Evidence" in html
+    assert "Unavailable scanner entries are informational and do not increase risk." in html
+    assert "Candidate top findings" in html
+    assert "Unsafe &lt;script&gt; title" in html
+    assert "Unsafe <script> title" not in html
 
 
 def _comparison() -> dict:
@@ -154,6 +177,30 @@ def _comparison() -> dict:
         },
         "overall_risk": "HIGH",
         "reasons": ["Same or similar name with missing README attribution; manual review recommended."],
+    }
+
+
+def _security_summary(repo: str) -> dict:
+    return {
+        "repo": repo,
+        "local_path": ".forksure-cache/repos/repo",
+        "score": 0,
+        "risk_level": "INFO",
+        "finding_count": 1,
+        "counts_by_severity": {"info": 1, "low": 0, "medium": 0, "high": 0, "critical": 0},
+        "top_findings": [
+            {
+                "id": "gitleaks-unavailable",
+                "category": "secret",
+                "severity": "info",
+                "title": "Gitleaks unavailable",
+                "description": "Install Gitleaks to enable secret scanning.",
+                "file_path": None,
+                "line": None,
+                "source_tool": "gitleaks",
+            }
+        ],
+        "unavailable_tool_info_findings": [],
     }
 
 

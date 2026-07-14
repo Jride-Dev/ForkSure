@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any, Mapping
 
 from .github_client import GitHubClient, GitHubRepo
 from .imposter_scanner import score_name_similarity
 from .license_scanner import compare_licenses, format_license
 from .readme_scanner import compare_readme_attribution
+from .security.audit import run_security_audit
+from .security.findings import SecurityFinding
+from .security.scoring import calculate_security_score
+from .similarity_scanner import ensure_repo_clone
 
 
-RISK_ORDER = {"not scanned": -1, "INFO": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
+RISK_ORDER = {"not scanned": -1, "INFO": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
 RISK_LABELS = {
     "name": "Name / imposter",
     "readme": "README attribution",
@@ -17,9 +22,17 @@ RISK_LABELS = {
     "similarity": "Code similarity",
     "security": "Security",
 }
+TOP_SECURITY_FINDING_LIMIT = 10
+FINDING_RISK_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 
 
-def compare_repositories(source_repo: str, candidate_repo: str, github_client: GitHubClient) -> dict[str, Any]:
+def compare_repositories(
+    source_repo: str,
+    candidate_repo: str,
+    github_client: GitHubClient,
+    *,
+    include_security: bool = False,
+) -> dict[str, Any]:
     source_metadata = github_client.get_repo(source_repo)
     candidate_metadata = github_client.get_repo(candidate_repo)
     source_license = github_client.get_repo_license(source_repo)
@@ -56,6 +69,11 @@ def compare_repositories(source_repo: str, candidate_repo: str, github_client: G
             "candidate_fork": candidate["fork"],
         },
     }
+    if include_security:
+        source_path = ensure_repo_clone(source_repo)
+        candidate_path = ensure_repo_clone(candidate_repo)
+        comparison["source_security"] = _security_summary(source_repo, source_path)
+        comparison["candidate_security"] = _security_summary(candidate_repo, candidate_path)
     return _with_risk_breakdown(comparison)
 
 
@@ -104,13 +122,16 @@ def _build_risk_breakdown(comparison: Mapping[str, Any]) -> dict[str, dict[str, 
     license_comparison = _mapping_or_empty(comparison.get("license_comparison"))
     readme_comparison = _mapping_or_empty(comparison.get("readme_comparison"))
     similarity = comparison.get("similarity") if isinstance(comparison.get("similarity"), Mapping) else None
+    candidate_security = (
+        comparison.get("candidate_security") if isinstance(comparison.get("candidate_security"), Mapping) else None
+    )
 
     breakdown = {
         "name": _name_risk(source, candidate, name_similarity),
         "readme": _readme_risk(candidate, name_similarity, readme_comparison),
         "license": _license_risk(license_comparison),
         "similarity": _similarity_risk(similarity),
-        "security": _risk_item("not scanned", "Security scanning is not part of repository compare yet."),
+        "security": _security_risk(candidate_security),
     }
     breakdown["overall"] = _overall_from_breakdown(breakdown)
     return breakdown
@@ -242,6 +263,34 @@ def _similarity_risk(similarity: Mapping[str, Any] | None) -> dict[str, Any]:
     return _risk_item("INFO", "No meaningful exact content/path similarity found.", [summary])
 
 
+def _security_risk(candidate_security: Mapping[str, Any] | None) -> dict[str, Any]:
+    if candidate_security is None:
+        return _risk_item("not scanned", "Security audit not requested.")
+
+    score = int(candidate_security.get("score") or 0)
+    risk_level = str(candidate_security.get("risk_level") or "INFO")
+    finding_count = int(candidate_security.get("finding_count") or 0)
+    counts = _mapping_or_empty(candidate_security.get("counts_by_severity"))
+
+    if score == 0:
+        if finding_count:
+            summary = "Security audit score 0/100; only informational findings."
+        else:
+            summary = "Security audit score 0/100; no findings."
+        return _risk_item("INFO", summary, [summary])
+
+    high_count = int(counts.get("high") or 0)
+    critical_count = int(counts.get("critical") or 0)
+    if critical_count:
+        detail = "Security audit found critical-risk findings."
+    elif high_count:
+        detail = "Security audit found high-risk findings."
+    else:
+        detail = f"Security audit score {score}/100 with {finding_count} findings."
+    summary = f"{detail} Candidate risk level {risk_level}."
+    return _risk_item(risk_level, summary, [summary])
+
+
 def _overall_from_breakdown(breakdown: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     scored_items = {
         key: value
@@ -271,7 +320,7 @@ def _overall_from_breakdown(breakdown: Mapping[str, Mapping[str, Any]]) -> dict[
 
     return _risk_item(
         "INFO",
-        "No elevated metadata, license, README, or similarity risk signal was found.",
+        "No elevated metadata, license, README, similarity, or security risk signal was found.",
         ["Available scanned signals are informational or were not requested."],
     )
 
@@ -306,6 +355,51 @@ def _optional_text(value: Any) -> str:
         return "-"
     text = str(value).strip()
     return text or "-"
+
+
+def _security_summary(owner_repo: str, path: Path) -> dict[str, Any]:
+    findings = run_security_audit(path)
+    score = calculate_security_score(findings)
+    sorted_findings = sorted(findings, key=_finding_sort_key)
+    unavailable = [finding for finding in sorted_findings if _is_unavailable_tool_info(finding)]
+    return {
+        "repo": owner_repo,
+        "local_path": str(path),
+        "score": score["score"],
+        "risk_level": score["risk_level"],
+        "finding_count": score["finding_count"],
+        "counts_by_severity": dict(score["counts_by_severity"]),
+        "top_findings": [_finding_summary(finding) for finding in sorted_findings[:TOP_SECURITY_FINDING_LIMIT]],
+        "unavailable_tool_info_findings": [_finding_summary(finding) for finding in unavailable],
+    }
+
+
+def _finding_sort_key(finding: SecurityFinding) -> tuple[int, str, str]:
+    return (
+        -FINDING_RISK_ORDER.get(finding.severity, 0),
+        finding.category,
+        finding.title,
+    )
+
+
+def _finding_summary(finding: SecurityFinding) -> dict[str, Any]:
+    return {
+        "id": finding.id,
+        "category": finding.category,
+        "severity": finding.severity,
+        "title": finding.title,
+        "description": finding.description,
+        "file_path": finding.file_path,
+        "line": finding.line,
+        "source_tool": finding.source_tool,
+    }
+
+
+def _is_unavailable_tool_info(finding: SecurityFinding) -> bool:
+    if finding.severity != "info":
+        return False
+    text = f"{finding.title} {finding.description}".casefold()
+    return "unavailable" in text or "not installed" in text
 
 
 def _mapping_or_empty(value: Any) -> Mapping[str, Any]:

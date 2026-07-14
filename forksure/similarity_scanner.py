@@ -87,6 +87,10 @@ def scan_repository_similarity(source_repo: str, candidate_repo: str) -> dict[st
     return _scan_repository_paths(source_repo, candidate_repo, source_path, candidate_path)
 
 
+def ensure_repo_clone(owner_repo: str) -> Path:
+    return _ensure_repo_clone(owner_repo)
+
+
 def _scan_repository_paths(
     source_repo: str,
     candidate_repo: str,

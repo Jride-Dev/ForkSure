@@ -116,10 +116,11 @@ def compare(
     out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
     clone: bool = typer.Option(False, "--clone", help="Clone repositories before comparison."),
     similarity: bool = typer.Option(False, "--similarity", help="Compare cloned file paths and exact file hashes."),
+    security: bool = typer.Option(False, "--security", help="Run local security audits against cloned repositories."),
 ) -> None:
     """Compare two GitHub repositories using metadata, license, and README signals."""
     try:
-        result = compare_repositories(source_repo, candidate_repo, GitHubClient())
+        result = compare_repositories(source_repo, candidate_repo, GitHubClient(), include_security=security)
         if clone or similarity:
             result = add_similarity_to_comparison(result, scan_repository_similarity(source_repo, candidate_repo))
     except InvalidOwnerRepoError as exc:
@@ -373,6 +374,11 @@ def _render_compare_result(result: dict) -> None:
     if isinstance(similarity, dict):
         _render_similarity_result(similarity)
 
+    source_security = result.get("source_security")
+    candidate_security = result.get("candidate_security")
+    if isinstance(source_security, dict) and isinstance(candidate_security, dict):
+        _render_compare_security_result(source_security, candidate_security)
+
     if isinstance(reasons, list) and reasons:
         console.print("Reasons:")
         for reason in reasons:
@@ -438,6 +444,49 @@ def _render_similarity_result(similarity: dict) -> None:
                 str(match.get("match_type") or "-"),
             )
         console.print(match_table)
+
+
+def _render_compare_security_result(source_security: dict, candidate_security: dict) -> None:
+    summary_table = Table(title="Security Audit", show_lines=False, box=box.SIMPLE)
+    summary_table.add_column("Repository", style="bold", overflow="fold")
+    summary_table.add_column("Score", overflow="fold")
+    summary_table.add_column("Risk", overflow="fold")
+    summary_table.add_column("Findings", overflow="fold")
+    summary_table.add_row(
+        str(source_security.get("repo") or "source"),
+        f"{source_security.get('score', 0)}/100",
+        str(source_security.get("risk_level") or "INFO"),
+        str(source_security.get("finding_count") or 0),
+    )
+    summary_table.add_row(
+        str(candidate_security.get("repo") or "candidate"),
+        f"{candidate_security.get('score', 0)}/100",
+        str(candidate_security.get("risk_level") or "INFO"),
+        str(candidate_security.get("finding_count") or 0),
+    )
+    console.print(summary_table)
+
+    top_findings = candidate_security.get("top_findings")
+    if not isinstance(top_findings, list) or not top_findings:
+        return
+
+    finding_table = Table(title="Top Candidate Security Findings", show_lines=False, box=box.SIMPLE)
+    finding_table.add_column("Severity", style="bold", no_wrap=True)
+    finding_table.add_column("Category", overflow="fold")
+    finding_table.add_column("File", overflow="fold")
+    finding_table.add_column("Line", justify="right")
+    finding_table.add_column("Title", overflow="fold")
+    for finding in top_findings[:10]:
+        if not isinstance(finding, dict):
+            continue
+        finding_table.add_row(
+            str(finding.get("severity") or "info").upper(),
+            str(finding.get("category") or "-"),
+            str(finding.get("file_path") or "-"),
+            str(finding.get("line") or "-"),
+            str(finding.get("title") or "-"),
+        )
+    console.print(finding_table)
 
 
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:

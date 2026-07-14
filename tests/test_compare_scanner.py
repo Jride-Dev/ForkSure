@@ -3,6 +3,7 @@ from typing import Any
 
 from forksure.compare_scanner import add_similarity_to_comparison, compare_repositories
 from forksure.github_client import GitHubRepo
+from forksure.security.findings import SecurityFinding
 
 
 def test_compare_repositories_returns_structured_result() -> None:
@@ -18,6 +19,7 @@ def test_compare_repositories_returns_structured_result() -> None:
     assert "metadata_summary" in result
     assert result["risk_breakdown"]["license"]["risk_level"] == "INFO"
     assert result["risk_breakdown"]["similarity"]["risk_level"] == "not scanned"
+    assert result["risk_breakdown"]["security"]["risk_level"] == "not scanned"
     assert "reasons" in result
 
 
@@ -68,6 +70,73 @@ def test_same_license_produces_info_license_risk() -> None:
 
     assert result["license_comparison"]["status"] == "same"
     assert result["risk_breakdown"]["license"]["risk_level"] == "INFO"
+
+
+def test_compare_repositories_includes_security_summaries_when_requested(monkeypatch, tmp_path) -> None:
+    clone_calls: list[str] = []
+
+    def fake_clone(owner_repo: str):
+        clone_calls.append(owner_repo)
+        path = tmp_path / owner_repo.replace("/", "-")
+        path.mkdir()
+        return path
+
+    monkeypatch.setattr("forksure.compare_scanner.ensure_repo_clone", fake_clone)
+    monkeypatch.setattr("forksure.compare_scanner.run_security_audit", lambda path: [_info_finding()])
+
+    result = compare_repositories("Jride-Dev/ForkSure", "other/ForkSure", FakeCompareClient(), include_security=True)
+
+    assert clone_calls == ["Jride-Dev/ForkSure", "other/ForkSure"]
+    assert result["source_security"]["score"] == 0
+    assert result["candidate_security"]["risk_level"] == "INFO"
+    assert result["risk_breakdown"]["security"]["risk_level"] == "INFO"
+
+
+def test_candidate_security_high_makes_security_risk_high(monkeypatch, tmp_path) -> None:
+    source_path = tmp_path / "source"
+    candidate_path = tmp_path / "candidate"
+    source_path.mkdir()
+    candidate_path.mkdir()
+
+    def fake_clone(owner_repo: str):
+        return candidate_path if owner_repo == "other/ForkSure" else source_path
+
+    def fake_audit(path):
+        if path == candidate_path:
+            return [_high_finding()]
+        return [_info_finding()]
+
+    monkeypatch.setattr("forksure.compare_scanner.ensure_repo_clone", fake_clone)
+    monkeypatch.setattr("forksure.compare_scanner.run_security_audit", fake_audit)
+
+    result = compare_repositories("Jride-Dev/ForkSure", "other/ForkSure", FakeCompareClient(), include_security=True)
+
+    assert result["candidate_security"]["score"] == 70
+    assert result["candidate_security"]["risk_level"] == "HIGH"
+    assert result["risk_breakdown"]["security"]["risk_level"] == "HIGH"
+
+
+def test_unavailable_info_findings_do_not_raise_security_risk(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("forksure.compare_scanner.ensure_repo_clone", lambda owner_repo: tmp_path)
+    monkeypatch.setattr(
+        "forksure.compare_scanner.run_security_audit",
+        lambda path: [
+            SecurityFinding(
+                id="semgrep-unavailable",
+                category="sast",
+                severity="info",
+                title="Semgrep unavailable",
+                description="Install Semgrep to enable SAST scanning.",
+                source_tool="semgrep",
+            )
+        ],
+    )
+
+    result = compare_repositories("Jride-Dev/ForkSure", "other/ForkSure", FakeCompareClient(), include_security=True)
+
+    assert result["candidate_security"]["score"] == 0
+    assert result["risk_breakdown"]["security"]["risk_level"] == "INFO"
+    assert result["candidate_security"]["unavailable_tool_info_findings"][0]["source_tool"] == "semgrep"
 
 
 def test_official_fork_lowers_risk() -> None:
@@ -180,3 +249,26 @@ def _zero_similarity() -> dict[str, Any]:
         "top_matches": [],
         "ignored_paths_summary": {},
     }
+
+
+def _info_finding() -> SecurityFinding:
+    return SecurityFinding(
+        id="gitleaks-unavailable",
+        category="secret",
+        severity="info",
+        title="Gitleaks unavailable",
+        description="Install Gitleaks to enable secret scanning.",
+        source_tool="gitleaks",
+    )
+
+
+def _high_finding() -> SecurityFinding:
+    return SecurityFinding(
+        id="unsafe-script",
+        category="unsafe-script",
+        severity="high",
+        title="curl piped to shell",
+        description="A script downloads code and pipes it to a shell.",
+        file_path="install.sh",
+        line=3,
+    )
