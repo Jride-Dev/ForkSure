@@ -9,13 +9,21 @@ from rich.console import Console
 from rich.table import Table
 
 from .compare_scanner import add_similarity_to_comparison, compare_repositories
+from .evidence_packet import build_evidence_packet
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .imposter_scanner import scan_imposters
 from .license_scanner import compare_licenses
 from .rare_string_scanner import merge_rare_string_matches, scan_rare_string_matches
 from .readme_scanner import compare_readme_attribution
-from .reports import COMPARE_DISCLAIMER, IMPOSTER_DISCLAIMER, render_forks, write_compare_html_report, write_imposter_html_report
+from .reports import (
+    COMPARE_DISCLAIMER,
+    IMPOSTER_DISCLAIMER,
+    render_forks,
+    write_compare_html_report,
+    write_evidence_html_report,
+    write_imposter_html_report,
+)
 from .security.audit import run_security_audit
 from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
@@ -142,6 +150,49 @@ def compare(
     _render_compare_result(result)
     if html or open_report or out is not None:
         report_path = write_compare_html_report(result, out or _default_compare_report_path(source_repo, candidate_repo))
+        console.print(f"HTML report written to: {report_path}")
+        if open_report:
+            _open_html_report(report_path)
+
+
+@app.command()
+def evidence(
+    source_repo: str = typer.Argument(..., help="Source repository in owner/repo format."),
+    candidate_repo: str = typer.Argument(..., help="Candidate repository in owner/repo format."),
+    similarity: bool = typer.Option(False, "--similarity", help="Include clone-based similarity evidence."),
+    security: bool = typer.Option(False, "--security", help="Include local security audit evidence from cloned repositories."),
+    html: bool = typer.Option(False, "--html", help="Generate an HTML evidence packet in the reports/ directory."),
+    open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
+    out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+) -> None:
+    """Build a neutral evidence packet for manual repository review."""
+    try:
+        compare_result = compare_repositories(source_repo, candidate_repo, GitHubClient(), include_security=security)
+        if similarity:
+            compare_result = add_similarity_to_comparison(
+                compare_result,
+                scan_repository_similarity(source_repo, candidate_repo),
+            )
+    except InvalidOwnerRepoError as exc:
+        console.print(f"[red]Invalid repository:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+    except SimilarityScanError as exc:
+        console.print(f"[red]Similarity scan failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubNotFoundError as exc:
+        console.print(f"[red]Repository not found:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubRateLimitError as exc:
+        console.print(f"[red]Rate limited:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubAPIError as exc:
+        console.print(f"[red]GitHub error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    packet = build_evidence_packet(source_repo, candidate_repo, compare_result)
+    _render_evidence_packet(packet)
+    if html or open_report or out is not None:
+        report_path = write_evidence_html_report(packet, out or _default_evidence_report_path(source_repo, candidate_repo))
         console.print(f"HTML report written to: {report_path}")
         if open_report:
             _open_html_report(report_path)
@@ -489,6 +540,28 @@ def _render_compare_security_result(source_security: dict, candidate_security: d
     console.print(finding_table)
 
 
+def _render_evidence_packet(packet: dict) -> None:
+    console.print("ForkSure Evidence Packet")
+    console.print(f"Source: [bold]{packet.get('source_repo', '-')}[/bold]")
+    console.print(f"Candidate: [bold]{packet.get('candidate_repo', '-')}[/bold]")
+    console.print(f"Overall risk: [bold]{packet.get('overall_risk', 'INFO')}[/bold]")
+    console.print(str(packet.get("summary") or "-"))
+    _render_risk_breakdown(packet.get("risk_breakdown"))
+    _render_bullet_section("Evidence found", packet.get("evidence_found"))
+    _render_bullet_section("Evidence not found", packet.get("evidence_not_found"))
+    _render_bullet_section("Manual review recommendations", packet.get("manual_review_recommendations"))
+    console.print(f"[yellow]{packet.get('disclaimer', '')}[/yellow]")
+
+
+def _render_bullet_section(title: str, values: object) -> None:
+    console.print(f"{title}:")
+    if not isinstance(values, list) or not values:
+        console.print("-")
+        return
+    for value in values:
+        console.print(f"- {value}")
+
+
 def _render_security_findings(title: str, findings: list[SecurityFinding]) -> None:
     table = Table(title=title, show_lines=False)
     table.add_column("Severity", style="bold")
@@ -526,6 +599,12 @@ def _default_compare_report_path(source_repo: str, candidate_repo: str) -> Path:
     source_name = _safe_report_name(source_repo)
     candidate_name = _safe_report_name(candidate_repo)
     return Path("reports") / f"compare-{source_name}-vs-{candidate_name}.html"
+
+
+def _default_evidence_report_path(source_repo: str, candidate_repo: str) -> Path:
+    source_name = _safe_report_name(source_repo)
+    candidate_name = _safe_report_name(candidate_repo)
+    return Path("reports") / f"evidence-{source_name}-vs-{candidate_name}.html"
 
 
 def _safe_report_name(value: str) -> str:

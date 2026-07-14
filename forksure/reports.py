@@ -167,6 +167,185 @@ def write_compare_html_report(comparison: Mapping[str, Any], output_path: str | 
     return path
 
 
+def write_evidence_html_report(packet: Mapping[str, Any], output_path: str | Path) -> Path:
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_evidence_report_html(packet), encoding="utf-8")
+    return path
+
+
+def _evidence_report_html(packet: Mapping[str, Any]) -> str:
+    source_repo = str(packet.get("source_repo") or "-")
+    candidate_repo = str(packet.get("candidate_repo") or "-")
+    source_url = str(packet.get("source_url") or "")
+    candidate_url = str(packet.get("candidate_url") or "")
+    overall_risk = str(packet.get("overall_risk") or "INFO")
+    generated_at = str(packet.get("generated_at") or "")
+    risk_breakdown = _mapping_or_empty(packet.get("risk_breakdown"))
+
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ForkSure Evidence Packet</title>
+    <style>
+      body {{
+        background: #f7f8fa;
+        color: #1f2937;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 32px;
+      }}
+      main {{
+        background: #ffffff;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        margin: 0 auto;
+        max-width: 1050px;
+        padding: 28px;
+      }}
+      h1 {{
+        font-size: 28px;
+        margin: 0 0 8px;
+      }}
+      h2 {{
+        font-size: 20px;
+        margin: 0 0 10px;
+      }}
+      a {{
+        color: #075985;
+        overflow-wrap: anywhere;
+      }}
+      .meta, .summary, .disclaimer {{
+        margin: 8px 0;
+      }}
+      .disclaimer {{
+        background: #fff7df;
+        border: 1px solid #ead28a;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }}
+      .section {{
+        margin-top: 22px;
+      }}
+      .repo-grid {{
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin-top: 20px;
+      }}
+      .card {{
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        padding: 16px;
+      }}
+      .risk {{
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 8px;
+        padding: 3px 8px;
+      }}
+      .risk-critical {{
+        background: #7f1d1d;
+        color: #ffffff;
+      }}
+      .risk-high {{
+        background: #fee2e2;
+        color: #991b1b;
+      }}
+      .risk-medium {{
+        background: #ffedd5;
+        color: #9a3412;
+      }}
+      .risk-low {{
+        background: #dcfce7;
+        color: #166534;
+      }}
+      .risk-info {{
+        background: #e0f2fe;
+        color: #075985;
+      }}
+      .risk-notscanned {{
+        background: #f1f5f9;
+        color: #475569;
+      }}
+      ul {{
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }}
+      li {{
+        margin: 6px 0;
+      }}
+      table {{
+        border-collapse: collapse;
+        margin-top: 10px;
+        width: 100%;
+      }}
+      th, td {{
+        border-bottom: 1px solid #e5e7eb;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }}
+      th {{
+        background: #eef2f7;
+        color: #334155;
+        font-size: 13px;
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ForkSure Evidence Packet</h1>
+      <p class="meta"><strong>Timestamp:</strong> {escape(generated_at)}</p>
+      <p class="summary">{escape(str(packet.get("summary") or "-"))}</p>
+      <section class="repo-grid" aria-label="Repository links">
+        <article class="card">
+          <h2>Source repo</h2>
+          <p>{_html_link(source_repo, source_url)}</p>
+        </article>
+        <article class="card">
+          <h2>Candidate repo</h2>
+          <p>{_html_link(candidate_repo, candidate_url)}</p>
+        </article>
+      </section>
+      <section class="section">
+        <h2>Overall Risk <span class="risk risk-{escape(_risk_class(overall_risk))}">{escape(overall_risk)}</span></h2>
+      </section>
+{_risk_breakdown_section(risk_breakdown)}
+      <section class="section">
+        <h2>Evidence Found</h2>
+        {_html_list(packet.get("evidence_found"))}
+      </section>
+      <section class="section">
+        <h2>Evidence Not Found</h2>
+        {_html_list(packet.get("evidence_not_found"))}
+      </section>
+      <section class="section">
+        <h2>Manual Review Recommendations</h2>
+        {_html_list(packet.get("manual_review_recommendations"))}
+      </section>
+      <section class="section">
+        <h2>Disclaimer</h2>
+        <p class="disclaimer">{escape(str(packet.get("disclaimer") or ""))}</p>
+      </section>
+    </main>
+  </body>
+</html>
+"""
+
+
+def _html_link(label: str, url: str) -> str:
+    if not url:
+        return escape(label)
+    return f'<a href="{escape(url, quote=True)}">{escape(label)}</a>'
+
+
 def _compare_report_html(comparison: Mapping[str, Any], timestamp: str) -> str:
     source = _mapping_or_empty(comparison.get("source"))
     candidate = _mapping_or_empty(comparison.get("candidate"))
