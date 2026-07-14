@@ -136,6 +136,15 @@ h3 {
   max-width: 720px;
 }
 
+.release-note {
+  background: var(--soft);
+  border: 1px solid #cde8ee;
+  border-radius: 8px;
+  color: var(--accent-strong);
+  max-width: 720px;
+  padding: 12px 14px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

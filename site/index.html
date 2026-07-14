@@ -20,6 +20,7 @@
         <a href="#features">Features</a>
         <a href="#commands">Commands</a>
         <a href="#install">Install</a>
+        <a href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.1.0">v0.1.0</a>
       </nav>
     </header>
 
@@ -33,8 +34,13 @@
             Audit forks, imposters, license drift, attribution removal, code similarity,
             and repo safety signals.
           </p>
+          <p class="release-note">
+            v0.1.0 is the first public release, focused on manual review evidence,
+            static HTML reports, and source-first CLI workflows.
+          </p>
           <div class="actions">
             <a class="button primary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
+            <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.1.0">View v0.1.0 release</a>
             <a class="button secondary" href="#commands">See example commands</a>
           </div>
         </div>
@@ -52,6 +58,10 @@
             <strong>Metadata + similarity</strong>
           </div>
           <div class="signal-row">
+            <span>Evidence packets</span>
+            <strong>Neutral review summary</strong>
+          </div>
+          <div class="signal-row">
             <span>Local safety checks</span>
             <strong>Scripts + wrappers</strong>
           </div>
@@ -65,7 +75,7 @@
             ForkSure is a Python CLI that gathers repository evidence from GitHub and
             local project files. It helps reviewers inspect fork provenance, attribution,
             license drift, suspicious name similarity, exact code similarity, and basic
-            safety signals.
+            safety signals, then package the findings for manual review.
           </p>
         </div>
         <div>
@@ -98,7 +108,11 @@
           </article>
           <article class="card">
             <h3>Repository Compare</h3>
-            <p>Compare two repositories using metadata, license, README attribution, and optional clone similarity.</p>
+            <p>Compare two repositories using metadata, license, README attribution, optional clone similarity, and optional security audit signals.</p>
+          </article>
+          <article class="card">
+            <h3>Evidence Packets</h3>
+            <p>Create concise, neutral packets for maintainers or support escalation without making accusations.</p>
           </article>
           <article class="card">
             <h3>Safety Wrappers</h3>
@@ -119,7 +133,8 @@
         <div class="command-list">
           <pre><code>python -m forksure.cli forks OWNER/REPO --audit-license --audit-readme</code></pre>
           <pre><code>python -m forksure.cli imposters OWNER/REPO --rare-strings --html</code></pre>
-          <pre><code>python -m forksure.cli compare OWNER/REPO OTHER/REPO --similarity --html</code></pre>
+          <pre><code>python -m forksure.cli compare OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html</code></pre>
+          <pre><code>python -m forksure.cli evidence OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html</code></pre>
           <pre><code>python -m forksure.cli security audit .</code></pre>
         </div>
       </section>
@@ -138,6 +153,24 @@
           <p>
             Imposter and repository compare commands can write self-contained HTML
             reports with evidence, links, reasons, and neutral language for manual review.
+            Evidence packets provide a concise maintainer-facing summary.
+          </p>
+        </div>
+      </section>
+
+      <section class="section two-column" id="external-scanners">
+        <div>
+          <h2>External Scanners</h2>
+          <p>
+            ForkSure can use Gitleaks, Semgrep, and OSV Scanner when they are available.
+            If they are missing, ForkSure records informational findings instead of failing.
+          </p>
+        </div>
+        <div>
+          <h2>Current Status</h2>
+          <p>
+            v0.1.0 is public and intentionally small: no database, web UI framework,
+            background jobs, or scheduled monitoring.
           </p>
         </div>
       </section>
