@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import webbrowser
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .evidence_packet import build_evidence_packet
 from .fork_auditor import audit_forks
 from .github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, GitHubRateLimitError, InvalidOwnerRepoError
 from .imposter_scanner import scan_imposters
+from .json_reports import print_json, write_json_report
 from .license_scanner import compare_licenses
 from .rare_string_scanner import merge_rare_string_matches, scan_rare_string_matches
 from .readme_scanner import compare_readme_attribution
@@ -125,8 +127,10 @@ def compare(
     clone: bool = typer.Option(False, "--clone", help="Clone repositories before comparison."),
     similarity: bool = typer.Option(False, "--similarity", help="Compare cloned file paths and exact file hashes."),
     security: bool = typer.Option(False, "--security", help="Run local security audits against cloned repositories."),
+    json_output: bool = typer.Option(False, "--json", help="Write the compare result as JSON."),
 ) -> None:
     """Compare two GitHub repositories using metadata, license, and README signals."""
+    _reject_json_html_combination(json_output, html, open_report)
     try:
         result = compare_repositories(source_repo, candidate_repo, GitHubClient(), include_security=security)
         if clone or similarity:
@@ -147,6 +151,11 @@ def compare(
         console.print(f"[red]GitHub error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
+    _ensure_generated_at(result)
+    if json_output:
+        _write_or_print_json(result, out)
+        return
+
     _render_compare_result(result)
     if html or open_report or out is not None:
         report_path = write_compare_html_report(result, out or _default_compare_report_path(source_repo, candidate_repo))
@@ -164,8 +173,10 @@ def evidence(
     html: bool = typer.Option(False, "--html", help="Generate an HTML evidence packet in the reports/ directory."),
     open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
     out: Path | None = typer.Option(None, "--out", help="Custom HTML output path."),
+    json_output: bool = typer.Option(False, "--json", help="Write the evidence packet as JSON."),
 ) -> None:
     """Build a neutral evidence packet for manual repository review."""
+    _reject_json_html_combination(json_output, html, open_report)
     try:
         compare_result = compare_repositories(source_repo, candidate_repo, GitHubClient(), include_security=security)
         if similarity:
@@ -190,6 +201,10 @@ def evidence(
         raise typer.Exit(code=1) from exc
 
     packet = build_evidence_packet(source_repo, candidate_repo, compare_result)
+    if json_output:
+        _write_or_print_json(packet, out)
+        return
+
     _render_evidence_packet(packet)
     if html or open_report or out is not None:
         report_path = write_evidence_html_report(packet, out or _default_evidence_report_path(source_repo, candidate_repo))
@@ -344,6 +359,24 @@ def _parse_rule_option(value: str | None) -> list[str] | None:
         return None
     rules = [rule.strip() for rule in value.split(",") if rule.strip()]
     return rules or None
+
+
+def _reject_json_html_combination(json_output: bool, html: bool, open_report: bool) -> None:
+    if json_output and (html or open_report):
+        typer.echo("Error: --json cannot be combined with --html or --open.", err=True)
+        raise typer.Exit(code=2)
+
+
+def _ensure_generated_at(result: dict) -> None:
+    result.setdefault("generated_at", datetime.now().astimezone().isoformat(timespec="seconds"))
+
+
+def _write_or_print_json(data: dict, out: Path | None) -> None:
+    if out is not None:
+        report_path = write_json_report(data, out)
+        typer.echo(f"JSON report written to: {report_path}")
+        return
+    print_json(data)
 
 
 def _render_imposter_candidates(candidates: list[dict]) -> None:

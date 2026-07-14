@@ -1,3 +1,5 @@
+import json
+
 from rich.console import Console
 from typer.testing import CliRunner
 
@@ -65,6 +67,75 @@ def test_cli_compare_accepts_security(monkeypatch) -> None:
     assert seen["include_security"] is True
     assert "Security Audit" in result.output
     assert "Top Candidate Security Findings" in result.output
+
+
+def test_cli_compare_json_writes_valid_json_to_stdout(monkeypatch) -> None:
+    def fake_compare(source, candidate, github_client, include_security=False):
+        comparison = _comparison()
+        if include_security:
+            comparison["source_security"] = _security_summary("Jride-Dev/ForkSure")
+            comparison["candidate_security"] = _security_summary("other/ForkSure")
+        return comparison
+
+    monkeypatch.setattr("forksure.cli.compare_repositories", fake_compare)
+    monkeypatch.setattr("forksure.cli.scan_repository_similarity", lambda source, candidate: _similarity())
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["compare", "Jride-Dev/ForkSure", "other/ForkSure", "--similarity", "--security", "--json"],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["source"]["full_name"] == "Jride-Dev/ForkSure"
+    assert data["candidate"]["full_name"] == "other/ForkSure"
+    assert data["overall_risk"] == "HIGH"
+    assert "generated_at" in data
+    assert "risk_breakdown" in data
+    assert "similarity" in data
+    assert "source_security" in data
+    assert "candidate_security" in data
+    assert "Repository Compare" not in result.output
+    assert "Risk Breakdown" not in result.output
+
+
+def test_cli_compare_json_out_writes_file(monkeypatch, tmp_path) -> None:
+    output_path = tmp_path / "compare.json"
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _comparison(),
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["compare", "Jride-Dev/ForkSure", "other/ForkSure", "--json", "--out", str(output_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "JSON report written to:" in result.output
+    assert output_path.exists()
+    data = json.loads(output_path.read_text(encoding="utf-8"))
+    assert data["risk_breakdown"]["name"]["risk_level"] == "HIGH"
+
+
+def test_cli_compare_json_rejects_html(monkeypatch) -> None:
+    called = False
+
+    def fake_compare(source, candidate, github_client, include_security=False):
+        nonlocal called
+        called = True
+        return _comparison()
+
+    monkeypatch.setattr("forksure.cli.compare_repositories", fake_compare)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["compare", "Jride-Dev/ForkSure", "other/ForkSure", "--json", "--html"])
+
+    assert result.exit_code == 2
+    assert "--json cannot be combined with --html or --open" in result.output
+    assert called is False
 
 
 def _comparison() -> dict:

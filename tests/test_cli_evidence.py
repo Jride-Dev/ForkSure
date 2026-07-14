@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from rich.console import Console
@@ -57,6 +58,70 @@ def test_cli_evidence_similarity_and_open_use_mocks(monkeypatch, tmp_path) -> No
     assert output_path.exists()
     assert opened
     assert "HTML report written to" in result.output
+
+
+def test_cli_evidence_json_writes_valid_json_to_stdout(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _compare_result(),
+    )
+    monkeypatch.setattr("forksure.cli.scan_repository_similarity", lambda source, candidate: _similarity())
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["evidence", "Jride-Dev/ForkSure", "other/ForkSure", "--similarity", "--security", "--json"],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["source_repo"] == "Jride-Dev/ForkSure"
+    assert data["candidate_repo"] == "other/ForkSure"
+    assert data["overall_risk"] == "HIGH"
+    assert "generated_at" in data
+    assert "evidence_found" in data
+    assert "evidence_not_found" in data
+    assert "ForkSure Evidence Packet" not in result.output
+    assert "Risk Breakdown" not in result.output
+
+
+def test_cli_evidence_json_out_writes_file(monkeypatch, tmp_path) -> None:
+    output_path = tmp_path / "evidence.json"
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _compare_result(),
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["evidence", "Jride-Dev/ForkSure", "other/ForkSure", "--json", "--out", str(output_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "JSON report written to:" in result.output
+    assert output_path.exists()
+    data = json.loads(output_path.read_text(encoding="utf-8"))
+    assert data["evidence_found"]
+    assert data["evidence_not_found"]
+
+
+def test_cli_evidence_json_rejects_html(monkeypatch) -> None:
+    called = False
+
+    def fake_compare(source, candidate, github_client, include_security=False):
+        nonlocal called
+        called = True
+        return _compare_result()
+
+    monkeypatch.setattr("forksure.cli.compare_repositories", fake_compare)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["evidence", "Jride-Dev/ForkSure", "other/ForkSure", "--json", "--html"])
+
+    assert result.exit_code == 2
+    assert "--json cannot be combined with --html or --open" in result.output
+    assert called is False
 
 
 def _compare_result() -> dict:
