@@ -95,6 +95,16 @@ python -m forksure.cli security audit .
 - Two-repository comparison: run `compare SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to compare metadata, license, attribution, exact file similarity, and local safety signals.
 - Maintainer packet: run `evidence SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to create a concise evidence packet for manual review or support escalation.
 
+## GitHub Actions Examples
+
+ForkSure JSON output can be used in CI to save machine-readable evidence as an
+artifact. Documentation-only example workflows live in
+[docs/examples/github-actions/](docs/examples/github-actions/).
+
+These examples are not active workflows for this repository. Copy one into your
+own `.github/workflows/` directory if you want to run ForkSure manually in GitHub
+Actions and upload JSON, HTML, or text reports as artifacts.
+
 ## External Scanners
 
 ForkSure can integrate with these tools when they are available on `PATH`:

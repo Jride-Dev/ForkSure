@@ -1,0 +1,44 @@
+name: ForkSure local security audit example
+
+# Documentation-only example workflow.
+# Copy this file into .github/workflows/ to run it manually in your own repository.
+# ForkSure evidence is for manual review and this workflow does not auto-report anything.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-audit:
+    name: Run ForkSure security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Install ForkSure
+        run: uv sync
+
+      - name: Run local security audit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p reports
+          python -m forksure.cli security audit . | tee reports/security-audit.txt
+
+      - name: Upload ForkSure security audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: forksure-security-audit
+          path: reports/
+          if-no-files-found: error

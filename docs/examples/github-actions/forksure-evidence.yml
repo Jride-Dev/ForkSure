@@ -1,0 +1,80 @@
+name: ForkSure evidence packet example
+
+# Documentation-only example workflow.
+# Copy this file into .github/workflows/ in a repository where ForkSure can run.
+# ForkSure produces evidence for manual review, not accusations.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: Source repository in OWNER/REPO format
+        required: true
+        default: OWNER/REPO
+      candidate_repo:
+        description: Candidate repository in OTHER_OWNER/OTHER_REPO format
+        required: true
+        default: OTHER_OWNER/OTHER_REPO
+      include_similarity:
+        description: Include clone-based exact file similarity evidence
+        required: true
+        type: boolean
+        default: true
+      include_security:
+        description: Include local ForkSure security audit evidence from clones
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Build ForkSure evidence packet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Install ForkSure
+        run: uv sync
+
+      - name: Build evidence reports
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ inputs.source_repo }}
+          CANDIDATE_REPO: ${{ inputs.candidate_repo }}
+          INCLUDE_SIMILARITY: ${{ inputs.include_similarity }}
+          INCLUDE_SECURITY: ${{ inputs.include_security }}
+        run: |
+          mkdir -p reports
+
+          FLAGS=()
+          if [ "$INCLUDE_SIMILARITY" = "true" ]; then
+            FLAGS+=(--similarity)
+          fi
+          if [ "$INCLUDE_SECURITY" = "true" ]; then
+            FLAGS+=(--security)
+          fi
+
+          python -m forksure.cli evidence "$SOURCE_REPO" "$CANDIDATE_REPO" "${FLAGS[@]}" --json --out reports/evidence.json
+          python -m forksure.cli evidence "$SOURCE_REPO" "$CANDIDATE_REPO" "${FLAGS[@]}" --html --out reports/evidence.html
+
+      - name: Upload ForkSure evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: forksure-evidence
+          path: reports/
+          if-no-files-found: error
+
+      # This example intentionally does not fail the workflow because risk is HIGH.
+      # Review the uploaded evidence artifacts before deciding what, if anything, to do next.
