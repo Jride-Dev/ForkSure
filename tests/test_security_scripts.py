@@ -68,6 +68,17 @@ def test_unsafe_script_scanner_ignores_node_modules(tmp_path) -> None:
     assert findings == []
 
 
+def test_unsafe_script_scanner_ignores_forksure_cache(tmp_path) -> None:
+    script_dir = tmp_path / ".forksure-cache" / "repos" / "cached-repo"
+    script_dir.mkdir(parents=True)
+    script = script_dir / "install.sh"
+    script.write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
+
+    findings = scan_unsafe_scripts(tmp_path)
+
+    assert findings == []
+
+
 def test_unsafe_script_scanner_still_detects_install_sh_in_normal_directory(tmp_path) -> None:
     script_dir = tmp_path / "scripts"
     script_dir.mkdir()

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Pattern
 
+from ..path_filters import LOCAL_SCAN_IGNORED_DIR_NAMES as IGNORED_DIR_NAMES
+from ..path_filters import should_skip_path
 from .findings import SecurityFinding
 
 
@@ -18,30 +20,6 @@ SCANNED_FILENAMES = {
     "docker-compose.yml",
 }
 SCANNED_SUFFIXES = {".sh", ".ps1"}
-IGNORED_DIR_NAMES = {
-    ".git",
-    ".hg",
-    ".svn",
-    ".venv",
-    "venv",
-    "env",
-    "__pycache__",
-    "pycache",
-    ".pytest_cache",
-    ".pytest-tmp",
-    "tmp_pytest_run",
-    ".cbh-test-tmp",
-    ".ruff_cache",
-    "node_modules",
-    "dist",
-    "build",
-    "coverage",
-    "htmlcov",
-    ".mypy_cache",
-    ".tox",
-}
-
-
 @dataclass(frozen=True)
 class ScriptRule:
     id: str
@@ -176,18 +154,6 @@ def _iter_scannable_files(root: Path) -> Iterable[Path]:
             file_path = current_path / filename
             if not should_skip_path(file_path, root) and _is_scannable_file(file_path, root):
                 yield file_path
-
-
-def should_skip_path(path: Path, root: Path) -> bool:
-    try:
-        parts = path.relative_to(root).parts
-    except ValueError:
-        parts = path.parts
-
-    if not parts and path.name:
-        parts = (path.name,)
-
-    return any(part.lower() in IGNORED_DIR_NAMES for part in parts)
 
 
 def _is_scannable_file(path: Path, root: Path) -> bool:

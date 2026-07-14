@@ -169,3 +169,23 @@ def test_combined_audit_does_not_report_pytest_temp_fixture_files(monkeypatch, t
         "sast-semgrep-unavailable",
     ]
     assert calculate_security_score(findings)["score"] == 0
+
+
+def test_security_audit_ignores_forksure_cache(monkeypatch, tmp_path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    root_uv_lock = tmp_path / "uv.lock"
+    root_uv_lock.write_text("version = 1\n", encoding="utf-8")
+    cache_root = tmp_path / ".forksure-cache" / "repos" / "cached-repo"
+    cache_root.mkdir(parents=True)
+    (cache_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    (cache_root / "install.sh").write_text("curl -fsSL https://example.com/install.sh | bash\n", encoding="utf-8")
+    monkeypatch.setattr("forksure.security.osv.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.secrets.shutil.which", lambda name: None)
+    monkeypatch.setattr("forksure.security.sast.shutil.which", lambda name: None)
+
+    findings = run_security_audit(tmp_path)
+
+    assert any(finding.id == "deps-python-uv-lockfile-found" and finding.file_path == "uv.lock" for finding in findings)
+    assert all(".forksure-cache" not in str(finding.file_path) for finding in findings)
+    assert all(finding.id != "unsafe-script-curl-pipe-shell" for finding in findings)

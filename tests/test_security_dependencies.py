@@ -63,3 +63,32 @@ def test_dependency_scan_ignores_lockfiles_inside_generated_dirs(tmp_path) -> No
     findings = scan_dependencies(tmp_path)
 
     assert [finding.id for finding in findings] == ["deps-python-missing-lockfile"]
+
+
+def test_dependency_scan_ignores_uv_lock_inside_forksure_cache(tmp_path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    ignored = tmp_path / ".forksure-cache" / "repos" / "cached-repo"
+    ignored.mkdir(parents=True)
+    uv_lock = ignored / "uv.lock"
+    uv_lock.write_text("version = 1\n", encoding="utf-8")
+
+    findings = scan_dependencies(tmp_path)
+
+    assert [finding.id for finding in findings] == ["deps-python-missing-lockfile"]
+
+
+def test_dependency_scan_prefers_root_uv_lock_over_forksure_cache(tmp_path) -> None:
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = \"example\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    root_uv_lock = tmp_path / "uv.lock"
+    root_uv_lock.write_text("version = 1\n", encoding="utf-8")
+    ignored = tmp_path / ".forksure-cache" / "repos" / "cached-repo"
+    ignored.mkdir(parents=True)
+    cached_uv_lock = ignored / "uv.lock"
+    cached_uv_lock.write_text("version = 1\n", encoding="utf-8")
+
+    findings = scan_dependencies(tmp_path)
+
+    assert [finding.id for finding in findings] == ["deps-python-uv-lockfile-found"]
+    assert findings[0].file_path == "uv.lock"

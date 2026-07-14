@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Iterable
 
+from ..path_filters import should_skip_path
 from .findings import SecurityFinding
-from .scripts import should_skip_path
 
 
 PYTHON_LOCKFILES = {
