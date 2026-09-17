@@ -29,12 +29,12 @@ jobs:
       - name: Install ForkSure
         run: uv sync
 
-      - name: Run local security audit
+      - name: Run local security audit as JSON
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           mkdir -p reports
-          python -m forksure.cli security audit . | tee reports/security-audit.txt
+          python -m forksure.cli security audit . --json --out reports/security-audit.json
 
       - name: Upload ForkSure security audit artifacts
         uses: actions/upload-artifact@v4

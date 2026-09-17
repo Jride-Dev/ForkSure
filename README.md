@@ -88,6 +88,10 @@ python -m forksure.cli evidence OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity -
 python -m forksure.cli security audit .
 ```
 
+```powershell
+python -m forksure.cli security audit . --json --out reports/security-audit.json
+```
+
 ## Example Workflows
 
 - Fork review: run `forks OWNER/REPO --audit-license --audit-readme` to inspect fork metadata, license drift, and README attribution.

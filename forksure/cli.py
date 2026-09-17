@@ -26,7 +26,7 @@ from .reports import (
     write_evidence_html_report,
     write_imposter_html_report,
 )
-from .security.audit import run_security_audit
+from .security.audit import build_security_audit_report, run_security_audit
 from .security.dependencies import scan_dependencies
 from .security.findings import SecurityFinding
 from .security.osv import scan_osv
@@ -348,9 +348,14 @@ def security_audit(
         readable=True,
         resolve_path=True,
     ),
+    json_output: bool = typer.Option(False, "--json", help="Write the security audit result as JSON."),
+    out: Path | None = typer.Option(None, "--out", help="Custom JSON output path."),
 ) -> None:
     """Run all local security scanners."""
     findings = run_security_audit(path)
+    if json_output:
+        _write_or_print_json(build_security_audit_report(path, findings), out)
+        return
     _render_security_findings("Security Audit Findings", findings)
 
 

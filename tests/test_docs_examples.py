@@ -20,6 +20,8 @@ def test_github_actions_examples_are_documentation_only() -> None:
         assert "\n  pull_request:" not in text
 
     assert (docs_dir / "README.md").is_file()
+    security_example = (docs_dir / "forksure-security-audit.yml").read_text(encoding="utf-8")
+    assert "security audit . --json --out reports/security-audit.json" in security_example
 
     active_workflows_dir = root / ".github" / "workflows"
     active_workflow_names = {

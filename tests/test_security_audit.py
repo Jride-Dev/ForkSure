@@ -1,9 +1,33 @@
+import json
+
 from typer.testing import CliRunner
 
 from forksure.cli import app
 from forksure.security.audit import run_security_audit
 from forksure.security.findings import SecurityFinding
 from forksure.security.scoring import calculate_security_score
+
+
+def _cli_security_findings() -> list[SecurityFinding]:
+    return [
+        SecurityFinding(
+            id="deps-python-uv-lockfile-found",
+            category="dependencies",
+            severity="info",
+            title="Python uv lockfile found",
+            description="A recognized Python lockfile is present.",
+            file_path="uv.lock",
+        ),
+        SecurityFinding(
+            id="unsafe-script-eval",
+            category="unsafe-script",
+            severity="medium",
+            title="Dynamic evaluation",
+            description="A script uses eval.",
+            file_path="install.sh",
+            line=3,
+        ),
+    ]
 
 
 def test_combined_audit_returns_findings_from_both_scanners(monkeypatch, tmp_path) -> None:
@@ -83,6 +107,38 @@ def test_cli_security_audit_invokes_without_real_gitleaks_or_semgrep(monkeypatch
     assert "Semgrep unavailable" in result.output
     assert "Security score" in result.output
     assert "Risk level: INFO" in result.output
+
+
+def test_cli_security_audit_json_outputs_summary_without_rich(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("forksure.cli.run_security_audit", lambda path: _cli_security_findings())
+    result = CliRunner().invoke(app, ["security", "audit", str(tmp_path), "--json"])
+
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["path"] == str(tmp_path)
+    assert report["score"] == 30
+    assert report["risk_level"] == "MEDIUM"
+    assert report["finding_count"] == 2
+    assert report["counts_by_severity"]["info"] == 1
+    assert report["counts_by_severity"]["medium"] == 1
+    assert report["findings"][1]["line"] == 3
+    assert "Security Audit Findings" not in result.output
+    assert "Security score" not in result.output
+    assert "generated_at" in report
+
+
+def test_cli_security_audit_json_out_writes_file(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("forksure.cli.run_security_audit", lambda path: _cli_security_findings())
+    output_path = tmp_path / "reports" / "security-audit.json"
+    result = CliRunner().invoke(
+        app,
+        ["security", "audit", str(tmp_path), "--json", "--out", str(output_path)],
+    )
+
+    assert result.exit_code == 0
+    assert result.output == f"JSON report written to: {output_path}\n"
+    report = json.loads(output_path.read_text(encoding="utf-8"))
+    assert report["finding_count"] == 2
 
 
 def test_audit_includes_gitleaks_unavailable_info_when_missing(monkeypatch, tmp_path) -> None:

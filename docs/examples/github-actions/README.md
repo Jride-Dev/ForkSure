@@ -9,8 +9,9 @@ itself automatically.
 
 - `forksure-evidence.yml` builds JSON and HTML evidence packets for a manually
   supplied source repository and candidate repository.
-- `forksure-security-audit.yml` runs `python -m forksure.cli security audit .`
-  against the checked-out repository and saves terminal output as an artifact.
+- `forksure-security-audit.yml` runs `python -m forksure.cli security audit .
+  --json --out reports/security-audit.json` against the checked-out repository
+  and saves the JSON report as an artifact.
 
 ## How To Use
 
@@ -52,6 +53,9 @@ normal Actions authentication and higher rate limits than anonymous requests.
 Each workflow uploads the `reports/` directory as a workflow artifact. After a
 manual run completes, open the run page and download the artifact from the
 Artifacts section.
+
+When Gitleaks, Semgrep, or OSV Scanner are unavailable, ForkSure records
+informational findings in the JSON report instead of failing the audit.
 
 ## No Auto-Reporting
 
