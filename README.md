@@ -85,6 +85,10 @@ python -m forksure.cli evidence OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity -
 ```
 
 ```powershell
+python -m forksure.cli review OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html
+```
+
+```powershell
 python -m forksure.cli security audit .
 ```
 
@@ -98,6 +102,7 @@ python -m forksure.cli security audit . --json --out reports/security-audit.json
 - Candidate review: run `imposters OWNER/REPO --rare-strings --html` to collect neutral name-collision and rare-string evidence in an HTML report.
 - Two-repository comparison: run `compare SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to compare metadata, license, attribution, exact file similarity, and local safety signals.
 - Maintainer packet: run `evidence SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to create a concise evidence packet for manual review or support escalation.
+- Complete review: run `review SOURCE_REPO CANDIDATE_REPO --similarity --security --html` for the recommended end-to-end workflow.
 
 ## GitHub Actions Examples
 

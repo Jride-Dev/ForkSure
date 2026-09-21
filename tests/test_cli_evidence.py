@@ -124,6 +124,48 @@ def test_cli_evidence_json_rejects_html(monkeypatch) -> None:
     assert called is False
 
 
+def test_cli_review_runs_complete_workflow(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _compare_result(),
+    )
+    monkeypatch.setattr("forksure.cli.scan_repository_similarity", lambda source, candidate: _similarity())
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "review",
+            "Jride-Dev/ForkSure",
+            "other/ForkSure",
+            "--similarity",
+            "--security",
+            "--html",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "ForkSure Evidence Packet" in result.output
+    assert Path("reports/review-jride-dev-forksure-vs-other-forksure.html").exists()
+
+
+def test_cli_review_json_is_machine_readable(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "forksure.cli.compare_repositories",
+        lambda source, candidate, github_client, include_security=False: _compare_result(),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["review", "Jride-Dev/ForkSure", "other/ForkSure", "--json"],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["overall_risk"] == "HIGH"
+    assert "ForkSure Evidence Packet" not in result.output
+
+
 def _compare_result() -> dict:
     return {
         "source": {

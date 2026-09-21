@@ -214,6 +214,60 @@ def evidence(
 
 
 @app.command()
+def review(
+    source_repo: str = typer.Argument(..., help="Source repository in owner/repo format."),
+    candidate_repo: str = typer.Argument(..., help="Candidate repository in owner/repo format."),
+    similarity: bool = typer.Option(False, "--similarity", help="Include clone-based similarity evidence."),
+    security: bool = typer.Option(False, "--security", help="Include local security audit evidence."),
+    html: bool = typer.Option(False, "--html", help="Generate an HTML evidence packet."),
+    open_report: bool = typer.Option(False, "--open", help="Open the generated HTML report in the default browser."),
+    out: Path | None = typer.Option(None, "--out", help="Custom HTML or JSON output path."),
+    json_output: bool = typer.Option(False, "--json", help="Write the evidence packet as JSON."),
+) -> None:
+    """Run a complete repository review using metadata and optional local evidence."""
+    _reject_json_html_combination(json_output, html, open_report)
+    try:
+        compare_result = compare_repositories(
+            source_repo,
+            candidate_repo,
+            GitHubClient(),
+            include_security=security,
+        )
+        if similarity:
+            compare_result = add_similarity_to_comparison(
+                compare_result,
+                scan_repository_similarity(source_repo, candidate_repo),
+            )
+    except InvalidOwnerRepoError as exc:
+        console.print(f"[red]Invalid repository:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+    except SimilarityScanError as exc:
+        console.print(f"[red]Similarity scan failed:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubNotFoundError as exc:
+        console.print(f"[red]Repository not found:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubRateLimitError as exc:
+        console.print(f"[red]Rate limited:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except GitHubAPIError as exc:
+        console.print(f"[red]GitHub error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    packet = build_evidence_packet(source_repo, candidate_repo, compare_result)
+    if json_output:
+        _write_or_print_json(packet, out)
+        return
+
+    _render_evidence_packet(packet)
+    if html or open_report or out is not None:
+        report_path = write_evidence_html_report(packet, out or _default_review_report_path(source_repo, candidate_repo))
+        console.print(f"HTML report written to: {report_path}")
+        if open_report:
+            _open_html_report(report_path)
+
+
+@app.command()
 def imposters(
     owner_repo: str = typer.Argument(..., help="Repository in owner/repo format."),
     html: bool = typer.Option(False, "--html", help="Generate an HTML report in the reports/ directory."),
@@ -643,6 +697,12 @@ def _default_evidence_report_path(source_repo: str, candidate_repo: str) -> Path
     source_name = _safe_report_name(source_repo)
     candidate_name = _safe_report_name(candidate_repo)
     return Path("reports") / f"evidence-{source_name}-vs-{candidate_name}.html"
+
+
+def _default_review_report_path(source_repo: str, candidate_repo: str) -> Path:
+    source_name = _safe_report_name(source_repo)
+    candidate_name = _safe_report_name(candidate_repo)
+    return Path("reports") / f"review-{source_name}-vs-{candidate_name}.html"
 
 
 def _safe_report_name(value: str) -> str:
