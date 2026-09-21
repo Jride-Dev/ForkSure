@@ -20,7 +20,7 @@
         <a href="#features">Features</a>
         <a href="#commands">Commands</a>
         <a href="#install">Install</a>
-        <a href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.1.0">v0.1.0</a>
+        <a href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.2.0">v0.2.0</a>
       </nav>
     </header>
 
@@ -35,12 +35,12 @@
             and repo safety signals.
           </p>
           <p class="release-note">
-            v0.1.0 is the first public release, focused on manual review evidence,
-            static HTML reports, and source-first CLI workflows.
+            v0.2.0 adds a unified review workflow for metadata, provenance,
+            attribution, optional similarity, and optional security evidence.
           </p>
           <div class="actions">
             <a class="button primary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
-            <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.1.0">View v0.1.0 release</a>
+            <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.2.0">View v0.2.0 release</a>
             <a class="button secondary" href="#commands">See example commands</a>
           </div>
         </div>
@@ -132,9 +132,10 @@
       <section class="section" id="commands">
         <div class="section-heading">
           <p class="eyebrow">Example CLI usage</p>
-          <h2>Run Targeted Scans</h2>
+          <h2>Start With A Complete Review</h2>
         </div>
         <div class="command-list">
+          <pre><code>python -m forksure.cli review OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html</code></pre>
           <pre><code>python -m forksure.cli forks OWNER/REPO --audit-license --audit-readme</code></pre>
           <pre><code>python -m forksure.cli imposters OWNER/REPO --rare-strings --html</code></pre>
           <pre><code>python -m forksure.cli compare OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html</code></pre>
@@ -174,7 +175,8 @@
         <div>
           <h2>Current Status</h2>
           <p>
-            v0.1.0 is public and intentionally small: no database, web UI framework,
+            v0.2.0 makes the unified review workflow the recommended starting point.
+            ForkSure remains intentionally small: no database, web UI framework,
             background jobs, or scheduled monitoring.
           </p>
         </div>

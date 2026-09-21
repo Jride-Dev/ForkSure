@@ -1,6 +1,6 @@
 # ForkSure
 
-[![Release](https://img.shields.io/github/v/release/Jride-Dev/ForkSure?label=release)](https://github.com/Jride-Dev/ForkSure/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/Jride-Dev/ForkSure?label=release)](https://github.com/Jride-Dev/ForkSure/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/Jride-Dev/ForkSure)](LICENSE)
 
 ForkSure is a Python CLI for repository provenance review, fork audits,
@@ -68,6 +68,14 @@ resolved dependency graph.
 
 ## Common Commands
 
+The recommended end-to-end workflow is:
+
+```powershell
+python -m forksure.cli review OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html
+```
+
+Targeted commands remain available when only one signal or report is needed:
+
 ```powershell
 python -m forksure.cli forks OWNER/REPO --audit-license --audit-readme
 ```
@@ -82,10 +90,6 @@ python -m forksure.cli compare OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --
 
 ```powershell
 python -m forksure.cli evidence OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html
-```
-
-```powershell
-python -m forksure.cli review OWNER/REPO OTHER_OWNER/OTHER_REPO --similarity --security --html
 ```
 
 ```powershell
@@ -137,9 +141,9 @@ violations through manual review before escalating.
 
 ## Current Status
 
-ForkSure is in the v0.1.x public release phase. v0.1.0 is the first public
-release tag, focused on repository provenance, comparison, security-wrapper
-signals, evidence packets, and static HTML reporting.
+ForkSure v0.2.0 makes `review` the primary end-to-end workflow for repository
+metadata, provenance, attribution, optional exact-file similarity, optional
+local security signals, and neutral HTML or JSON evidence output.
 
 The project is intentionally small: no database, web UI framework, background
 jobs, or scheduled monitoring.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "forksure"
-version = "0.1.0"
+version = "0.2.0"
 description = "GitHub repository provenance, fork audit, imposter repo, and license drift scanner."
 readme = "README.md"
 license = "MIT"
