@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add a local browser UI for repository comparison and close-name discovery.
+- Add `forksure ui` with safe local defaults and optional similarity/security checks.
+
 ## v0.2.0 - 2026-09-21
 
 - Add the unified `review` command for end-to-end repository evidence collection.

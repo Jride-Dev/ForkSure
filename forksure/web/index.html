@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ForkSure repository provenance review interface">
+    <title>ForkSure Review Console</title>
+    <link rel="stylesheet" href="/assets/app.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="/" aria-label="ForkSure home">
+        <img src="/assets/forksure-mark.svg" width="36" height="36" alt="">
+        <span>ForkSure</span>
+      </a>
+      <div class="header-meta">
+        <span class="status-dot" aria-hidden="true"></span>
+        Local review console
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="intro">
+        <p class="eyebrow">Repository provenance review</p>
+        <h1>Check the repo, not your patience.</h1>
+        <p>Compare two GitHub repositories or search a project name for close matches. Results are evidence for manual review, not accusations.</p>
+      </section>
+
+      <div class="workspace">
+        <nav class="mode-tabs" aria-label="Review mode">
+          <button class="tab is-active" type="button" data-panel="compare-panel" aria-selected="true">Compare repositories</button>
+          <button class="tab" type="button" data-panel="matches-panel" aria-selected="false">Find close matches</button>
+        </nav>
+
+        <section class="tool-panel" id="compare-panel">
+          <form id="compare-form">
+            <div class="form-grid">
+              <label>
+                <span>Source repository</span>
+                <input name="source_repo" type="text" placeholder="owner/original-repo" autocomplete="off" required>
+              </label>
+              <label>
+                <span>Repository to check</span>
+                <input name="candidate_repo" type="text" placeholder="other-owner/similar-repo" autocomplete="off" required>
+              </label>
+            </div>
+            <div class="form-actions">
+              <div class="option-row">
+                <label class="check-option"><input name="include_similarity" type="checkbox"><span>Exact-file similarity</span></label>
+                <label class="check-option"><input name="include_security" type="checkbox"><span>Security audit</span></label>
+              </div>
+              <button class="primary-action" type="submit">Run repository review</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="tool-panel is-hidden" id="matches-panel">
+          <form id="matches-form">
+            <label class="wide-field">
+              <span>Repository name or owner/repo</span>
+              <input name="repository" type="text" placeholder="ForkSure or Jride-Dev/ForkSure" autocomplete="off" required>
+            </label>
+            <div class="form-actions align-end">
+              <p class="field-note">Searches GitHub for exact, normalized, and fuzzy name matches.</p>
+              <button class="primary-action" type="submit">Search close matches</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="results" id="results" aria-live="polite">
+          <div class="empty-state">
+            <div class="empty-mark">FS</div>
+            <h2>Ready for a repository</h2>
+            <p>Enter GitHub repository names above to start a review.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      ForkSure provides neutral evidence for manual review. It does not determine ownership, intent, or malicious behavior.
+    </footer>
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

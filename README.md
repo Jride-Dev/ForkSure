@@ -45,6 +45,19 @@ You can run the CLI from the source tree:
 python -m forksure.cli --help
 ```
 
+## Local Web UI
+
+Launch the repository review interface:
+
+```powershell
+uv run forksure ui
+```
+
+ForkSure opens <http://127.0.0.1:8765> in the default browser. The interface
+supports two-repository comparison and close-match searches using either a
+repository name or `owner/repo`. Use `--no-open` to start the server without
+opening a browser, or `--port` to choose another port.
+
 Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositories:
 
 ```powershell

@@ -40,6 +40,7 @@
           </p>
           <div class="actions">
             <a class="button primary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
+            <a class="button secondary" href="#local-ui">Run the local UI</a>
             <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.2.0">View v0.2.0 release</a>
             <a class="button secondary" href="#commands">See example commands</a>
           </div>
@@ -95,6 +96,10 @@
         </div>
         <div class="feature-grid">
           <article class="card">
+            <h3>Local Review UI</h3>
+            <p>Enter repository names in a browser interface for comparison or close-match discovery.</p>
+          </article>
+          <article class="card">
             <h3>Fork Audits</h3>
             <p>List forks and compare license and README attribution against the source repository.</p>
           </article>
@@ -126,6 +131,21 @@
             <h3>JSON For Automation</h3>
             <p>Write compare and evidence results as JSON for CI artifacts, including documentation-only GitHub Actions examples.</p>
           </article>
+        </div>
+      </section>
+
+      <section class="section two-column" id="local-ui">
+        <div>
+          <p class="eyebrow">Local application</p>
+          <h2>Use ForkSure In Your Browser</h2>
+          <p>
+            Start the local review console and enter repository names directly.
+            The UI uses the same provenance and comparison engine as the CLI.
+          </p>
+        </div>
+        <div>
+          <pre><code>uv run forksure ui</code></pre>
+          <p class="note">The server binds to 127.0.0.1 by default and opens your browser automatically.</p>
         </div>
       </section>
 

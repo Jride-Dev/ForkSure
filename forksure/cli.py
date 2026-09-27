@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import threading
 import webbrowser
 from pathlib import Path
 
@@ -265,6 +266,23 @@ def review(
         console.print(f"HTML report written to: {report_path}")
         if open_report:
             _open_html_report(report_path)
+
+
+@app.command()
+def ui(
+    host: str = typer.Option("127.0.0.1", "--host", help="Host interface for the local UI."),
+    port: int = typer.Option(8765, "--port", min=1, max=65535, help="Port for the local UI."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the UI in the default browser."),
+) -> None:
+    """Launch the local ForkSure repository review interface."""
+    import uvicorn
+
+    url = f"http://{host}:{port}"
+    console.print(f"ForkSure UI: [bold]{url}[/bold]")
+    console.print("Press Ctrl+C to stop the local server.")
+    if open_browser:
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    uvicorn.run("forksure.web_app:app", host=host, port=port, log_level="warning")
 
 
 @app.command()
