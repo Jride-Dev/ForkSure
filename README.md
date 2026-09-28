@@ -9,6 +9,8 @@ code similarity evidence, local safety signals, and neutral evidence packets.
 
 Website: <https://jride-dev.github.io/ForkSure/>
 
+Hosted review app: <https://forksure.jri-techyes.top/>
+
 ## What ForkSure Does
 
 - Lists GitHub repository forks and fork metadata.
@@ -57,6 +59,11 @@ ForkSure opens <http://127.0.0.1:8765> in the default browser. The interface
 supports two-repository comparison and close-match searches using either a
 repository name or `owner/repo`. Use `--no-open` to start the server without
 opening a browser, or `--port` to choose another port.
+
+The hosted app supports GitHub metadata comparison and close-match discovery.
+Clone-based similarity and subprocess security scans remain local-only and are
+disabled in the hosted interface. Hosted license and README signals are marked
+unknown when GitHub's public API does not return enough evidence.
 
 Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositories:
 

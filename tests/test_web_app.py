@@ -26,6 +26,13 @@ def test_web_ui_serves_review_console() -> None:
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 
 
+def test_local_capabilities_include_full_scans() -> None:
+    response = request("GET", "/api/capabilities")
+
+    assert response.status_code == 200
+    assert response.json() == {"hosted": False, "similarity": True, "security": True}
+
+
 def test_compare_api_returns_existing_comparison(monkeypatch) -> None:
     expected = {
         "source": {"full_name": "owner/source"},

@@ -91,6 +91,11 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/capabilities")
+def capabilities() -> dict[str, bool]:
+    return {"hosted": False, "similarity": True, "security": True}
+
+
 def _http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, InvalidOwnerRepoError):
         return HTTPException(status_code=422, detail=str(exc))

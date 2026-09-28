@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "forksure-app",
+  "main": "deploy/cloudflare/worker.js",
+  "compatibility_date": "2026-09-27",
+  "routes": [
+    {
+      "pattern": "forksure.jri-techyes.top",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./forksure/web",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,6 +1,8 @@
 const results = document.querySelector("#results");
 const tabs = document.querySelectorAll(".tab");
 
+loadCapabilities();
+
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     tabs.forEach((item) => {
@@ -212,4 +214,25 @@ function element(tag, className = "", content = "") {
 
 function text(value) {
   return value === null || value === undefined || value === "" ? "-" : String(value);
+}
+
+async function loadCapabilities() {
+  try {
+    const response = await fetch("/api/capabilities");
+    if (!response.ok) return;
+    const capabilities = await response.json();
+    document.querySelector("#runtime-label").textContent = capabilities.hosted ? "Hosted review console" : "Local review console";
+    setCapability("include_similarity", "similarity-label", capabilities.similarity, "Exact-file similarity");
+    setCapability("include_security", "security-label", capabilities.security, "Security audit");
+  } catch {
+    // The core metadata UI remains usable if capability discovery fails.
+  }
+}
+
+function setCapability(inputName, labelId, enabled, label) {
+  const input = document.querySelector(`input[name='${inputName}']`);
+  const labelNode = document.querySelector(`#${labelId}`);
+  input.disabled = !enabled;
+  input.checked = enabled ? input.checked : false;
+  labelNode.textContent = enabled ? label : `${label} (local only)`;
 }

@@ -4,6 +4,7 @@
 
 - Add a local browser UI for repository comparison and close-name discovery.
 - Add `forksure ui` with safe local defaults and optional similarity/security checks.
+- Deploy a hosted metadata and close-match review UI at `forksure.jri-techyes.top`.
 
 ## v0.2.0 - 2026-09-21
 
