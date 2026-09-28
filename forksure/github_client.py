@@ -288,7 +288,9 @@ class GitHubClient:
             return
 
         if response.status_code == 404:
-            raise GitHubNotFoundError("Repository not found.")
+            raise GitHubNotFoundError(
+                "Repository not found or not accessible. Private repositories require GitHub authentication."
+            )
 
         detail = _extract_error_message(response)
         is_rate_limited = (

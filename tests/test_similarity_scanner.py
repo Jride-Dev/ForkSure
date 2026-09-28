@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from forksure import similarity_scanner
-from forksure.similarity_scanner import MAX_FILE_SIZE_BYTES, scan_repository_similarity
+from forksure.similarity_scanner import MAX_FILE_SIZE_BYTES, _git_environment, scan_repository_similarity
 
 
 def test_similarity_scanner_finds_exact_same_files(monkeypatch, tmp_path) -> None:
@@ -72,6 +72,17 @@ def test_similarity_score_is_zero_for_unrelated_files(monkeypatch, tmp_path) -> 
     assert result["shared_path_count"] == 0
     assert result["exact_hash_match_count"] == 0
     assert result["overall_similarity_score"] == 0
+
+
+def test_git_environment_uses_token_without_putting_it_in_clone_url(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "private-read-token")
+
+    environment = _git_environment()
+
+    assert environment["GIT_CONFIG_COUNT"] == "1"
+    assert environment["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
+    assert environment["GIT_CONFIG_VALUE_0"].startswith("Authorization: Basic ")
+    assert "private-read-token" not in environment["GIT_CONFIG_VALUE_0"]
 
 
 def _mock_clones(monkeypatch, paths: dict[str, Path]) -> None:

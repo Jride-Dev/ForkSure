@@ -9,6 +9,8 @@
 - Proxy hosted API requests through Cloudflare without exposing backend credentials to the browser.
 - Add a complete logo, social preview, favicon, and product screenshot set.
 - Adopt the tagline "Trace the source. Compare the evidence."
+- Support authenticated read-only cloning of private GitHub repositories without putting tokens in clone URLs.
+- Clarify when a repository is missing or inaccessible to the configured GitHub credentials.
 
 ## v0.2.0 - 2026-09-21
 

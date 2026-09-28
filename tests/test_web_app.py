@@ -30,7 +30,12 @@ def test_local_capabilities_include_full_scans() -> None:
     response = request("GET", "/api/capabilities")
 
     assert response.status_code == 200
-    assert response.json() == {"hosted": False, "similarity": True, "security": True}
+    assert response.json() == {
+        "hosted": False,
+        "similarity": True,
+        "security": True,
+        "github_authenticated": False,
+    }
 
 
 def test_hosted_capabilities_follow_environment(monkeypatch) -> None:
@@ -45,7 +50,12 @@ def test_hosted_capabilities_follow_environment(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {"hosted": True, "similarity": False, "security": True}
+    assert response.json() == {
+        "hosted": True,
+        "similarity": False,
+        "security": True,
+        "github_authenticated": False,
+    }
 
 
 def test_hosted_api_rejects_requests_without_proxy_token(monkeypatch) -> None:

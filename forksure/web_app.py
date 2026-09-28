@@ -104,6 +104,7 @@ def capabilities() -> dict[str, bool]:
         "hosted": _env_flag("FORKSURE_HOSTED", default=False),
         "similarity": _capability_enabled("similarity"),
         "security": _capability_enabled("security"),
+        "github_authenticated": bool(os.getenv("GITHUB_TOKEN", "").strip()),
     }
 
 

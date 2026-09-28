@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import hashlib
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -187,6 +189,7 @@ def _ensure_repo_clone(owner_repo: str) -> Path:
             check=True,
             capture_output=True,
             text=True,
+            env=_git_environment(),
         )
     except (OSError, subprocess.CalledProcessError) as exc:
         raise SimilarityScanError(f"Could not clone {owner_repo}: {exc}") from exc
@@ -195,10 +198,29 @@ def _ensure_repo_clone(owner_repo: str) -> Path:
 
 def _run_git(command: list[str]) -> bool:
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=_git_environment(),
+        )
     except OSError:
         return False
     return result.returncode == 0
+
+
+def _git_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if not token:
+        return environment
+
+    credentials = base64.b64encode(f"x-access-token:{token}".encode("utf-8")).decode("ascii")
+    environment["GIT_CONFIG_COUNT"] = "1"
+    environment["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
+    environment["GIT_CONFIG_VALUE_0"] = f"Authorization: Basic {credentials}"
+    return environment
 
 
 def _remove_cached_repo(target: Path, cache_root: Path) -> None:
