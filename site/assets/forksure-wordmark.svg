@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 112" role="img" aria-labelledby="title desc">
+  <title id="title">ForkSure</title>
+  <desc id="desc">ForkSure shield and fork mark with the tagline Trace the source. Compare the evidence.</desc>
+  <rect width="88" height="88" x="4" y="12" rx="16" fill="#0f6b7f"/>
+  <path d="M48 23 73 33v19c0 16-10.3 30.4-25 35.7C33.3 82.4 23 68 23 52V33l25-10Z" fill="#edf7f9"/>
+  <path d="M48 33 64.7 39.5V52c0 10.7-6.4 20.4-16.7 25-10.3-4.6-16.7-14.3-16.7-25V39.5L48 33Z" fill="#b8e3ea"/>
+  <path d="M40 41a5 5 0 1 0-2.5 4.4v13.8a7.5 7.5 0 0 0 7.5 7.5h1.3v-5H45a2.5 2.5 0 0 1-2.5-2.5v-5h10a7.5 7.5 0 0 0 7.5-7.5v-1.4a5 5 0 1 0-5 0v1.4a2.5 2.5 0 0 1-2.5 2.5h-10v-3.1A5 5 0 0 0 40 41Z" fill="#0b4f61"/>
+  <text x="116" y="57" fill="#16202a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="46" font-weight="750">ForkSure</text>
+  <text x="118" y="84" fill="#61707d" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Trace the source. Compare the evidence.</text>
+</svg>

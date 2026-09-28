@@ -11,6 +11,12 @@ Hosted review app: <https://forksure.jri-techyes.top/>
 
 Project site: <https://jride-dev.github.io/ForkSure/>
 
+![ForkSure repository comparison](docs/assets/screenshots/forksure-comparison-results.png)
+
+Additional views: [review console](docs/assets/screenshots/forksure-review-console.png),
+[close-match results](docs/assets/screenshots/forksure-close-matches.png), and
+[mobile layout](docs/assets/screenshots/forksure-mobile.png).
+
 ## What ForkSure Does
 
 - Lists GitHub repository forks and fork metadata.

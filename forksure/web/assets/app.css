@@ -206,8 +206,8 @@ footer { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 22px 0 
   .form-grid, .repo-grid, .risk-grid { grid-template-columns: 1fr; }
   .form-actions, .result-heading { align-items: stretch; flex-direction: column; }
   .primary-action { width: 100%; }
-  .mode-tabs { overflow-x: auto; }
-  .tab { flex: 1 0 auto; }
+  .mode-tabs { overflow: visible; }
+  .tab { flex: 1 1 50%; min-width: 0; padding: 0 8px; font-size: 13px; }
   .candidate-topline { flex-direction: column; }
   .candidate-badges { justify-content: flex-start; }
 }
