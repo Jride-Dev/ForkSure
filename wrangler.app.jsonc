@@ -3,6 +3,9 @@
   "name": "forksure-app",
   "main": "deploy/cloudflare/worker.js",
   "compatibility_date": "2026-09-27",
+  "vars": {
+    "API_BASE_URL": "https://forksure-api.onrender.com"
+  },
   "routes": [
     {
       "pattern": "forksure.jri-techyes.top",
