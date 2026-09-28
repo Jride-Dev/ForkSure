@@ -5,6 +5,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
+      if (url.pathname.startsWith("/api/") && env.API_BASE_URL) {
+        return await proxyApi(request, env, url);
+      }
       if (url.pathname === "/api/health" && request.method === "GET") {
         return json({ status: "ok" });
       }
@@ -28,6 +31,24 @@ export default {
     }
   },
 };
+
+async function proxyApi(request, env, requestUrl) {
+  const baseUrl = new URL(env.API_BASE_URL);
+  if (baseUrl.protocol !== "https:") throw httpError(500, "ForkSure API proxy is not configured safely.");
+
+  const target = new URL(`${requestUrl.pathname}${requestUrl.search}`, baseUrl);
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  if (env.FORKSURE_PROXY_TOKEN) headers.set("x-forksure-proxy-token", env.FORKSURE_PROXY_TOKEN);
+
+  const response = await fetch(target, {
+    method: request.method,
+    headers,
+    body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+    redirect: "manual",
+  });
+  return withSecurityHeaders(response);
+}
 
 async function compareRepositories(payload, env) {
   const sourceSlug = validSlug(payload.source_repo);

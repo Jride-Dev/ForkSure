@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +43,8 @@ app.mount("/assets", StaticFiles(directory=WEB_ROOT / "assets"), name="assets")
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    response = await call_next(request)
+    auth_error = _proxy_auth_error(request)
+    response = auth_error if auth_error is not None else await call_next(request)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; "
         "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
@@ -58,6 +61,10 @@ def index() -> FileResponse:
 
 @app.post("/api/compare")
 def compare(payload: CompareRequest) -> dict[str, Any]:
+    if payload.include_similarity and not _capability_enabled("similarity"):
+        raise HTTPException(status_code=403, detail="Similarity scanning is disabled on this deployment.")
+    if payload.include_security and not _capability_enabled("security"):
+        raise HTTPException(status_code=403, detail="Security scanning is disabled on this deployment.")
     try:
         result = compare_repositories(
             payload.source_repo,
@@ -93,7 +100,42 @@ def health() -> dict[str, str]:
 
 @app.get("/api/capabilities")
 def capabilities() -> dict[str, bool]:
-    return {"hosted": False, "similarity": True, "security": True}
+    return {
+        "hosted": _env_flag("FORKSURE_HOSTED", default=False),
+        "similarity": _capability_enabled("similarity"),
+        "security": _capability_enabled("security"),
+    }
+
+
+def _proxy_auth_error(request: Request):
+    if not request.url.path.startswith("/api/") or request.url.path == "/api/health":
+        return None
+    expected = os.getenv("FORKSURE_PROXY_TOKEN", "")
+    if not expected:
+        if _env_flag("FORKSURE_HOSTED", default=False):
+            return _json_error(503, "ForkSure API authentication is not configured.")
+        return None
+    supplied = request.headers.get("x-forksure-proxy-token", "")
+    if not hmac.compare_digest(supplied, expected):
+        return _json_error(401, "Unauthorized.")
+    return None
+
+
+def _json_error(status_code: int, detail: str):
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=status_code, content={"detail": detail})
+
+
+def _capability_enabled(name: str) -> bool:
+    return _env_flag(f"FORKSURE_ENABLE_{name.upper()}", default=True)
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().casefold() in {"1", "true", "yes", "on"}
 
 
 def _http_error(exc: Exception) -> HTTPException:

@@ -33,6 +33,41 @@ def test_local_capabilities_include_full_scans() -> None:
     assert response.json() == {"hosted": False, "similarity": True, "security": True}
 
 
+def test_hosted_capabilities_follow_environment(monkeypatch) -> None:
+    monkeypatch.setenv("FORKSURE_HOSTED", "true")
+    monkeypatch.setenv("FORKSURE_PROXY_TOKEN", "test-token")
+    monkeypatch.setenv("FORKSURE_ENABLE_SIMILARITY", "false")
+
+    response = request(
+        "GET",
+        "/api/capabilities",
+        headers={"x-forksure-proxy-token": "test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"hosted": True, "similarity": False, "security": True}
+
+
+def test_hosted_api_rejects_requests_without_proxy_token(monkeypatch) -> None:
+    monkeypatch.setenv("FORKSURE_HOSTED", "true")
+    monkeypatch.setenv("FORKSURE_PROXY_TOKEN", "test-token")
+
+    response = request("GET", "/api/capabilities")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized."}
+
+
+def test_hosted_health_check_does_not_require_proxy_token(monkeypatch) -> None:
+    monkeypatch.setenv("FORKSURE_HOSTED", "true")
+    monkeypatch.setenv("FORKSURE_PROXY_TOKEN", "test-token")
+
+    response = request("GET", "/api/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_compare_api_returns_existing_comparison(monkeypatch) -> None:
     expected = {
         "source": {"full_name": "owner/source"},

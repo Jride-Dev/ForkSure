@@ -61,9 +61,15 @@ repository name or `owner/repo`. Use `--no-open` to start the server without
 opening a browser, or `--port` to choose another port.
 
 The hosted app supports GitHub metadata comparison and close-match discovery.
-Clone-based similarity and subprocess security scans remain local-only and are
-disabled in the hosted interface. Hosted license and README signals are marked
-unknown when GitHub's public API does not return enough evidence.
+The Render deployment defined in `render.yaml` can also run clone-based
+similarity and security scans. External scanners still report informational
+findings when their executables are not installed on the backend.
+
+The hosted architecture keeps the static interface on Cloudflare and proxies
+`/api/*` to Render. Set the same private `FORKSURE_PROXY_TOKEN` in Render and as
+a Cloudflare Worker secret so the Render API is not exposed as an unrestricted
+public scan endpoint. Set `API_BASE_URL` on the Worker to the HTTPS Render
+service URL.
 
 Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositories:
 
