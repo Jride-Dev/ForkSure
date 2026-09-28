@@ -2,7 +2,7 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp/
 tmp_pytest_run/
-.cbh-test-tmp/
+.forksure-test-tmp/
 .forksure-cache/
 .wrangler/
 reports/

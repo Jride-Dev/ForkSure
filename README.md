@@ -3,13 +3,13 @@
 [![Release](https://img.shields.io/github/v/release/Jride-Dev/ForkSure?label=release)](https://github.com/Jride-Dev/ForkSure/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/Jride-Dev/ForkSure)](LICENSE)
 
-ForkSure is a Python CLI for repository provenance review, fork audits,
+ForkSure is a Python CLI and browser app for repository provenance review, fork audits,
 imposter/name-collision checks, license drift scanning, README attribution review,
-code similarity evidence, local safety signals, and neutral evidence packets.
-
-Website: <https://jride-dev.github.io/ForkSure/>
+code similarity evidence, repository safety signals, and neutral evidence packets.
 
 Hosted review app: <https://forksure.jri-techyes.top/>
+
+Project site: <https://jride-dev.github.io/ForkSure/>
 
 ## What ForkSure Does
 
@@ -18,9 +18,9 @@ Hosted review app: <https://forksure.jri-techyes.top/>
 - Checks whether fork READMEs preserve obvious upstream attribution.
 - Searches for same-name and similar-name repository candidates.
 - Uses rare README strings to discover additional candidate repositories.
-- Compares two repositories using metadata, license, README, optional exact file similarity, and optional local security audit signals.
+- Compares two repositories using metadata, license, README, optional exact file similarity, and optional security audit signals.
 - Generates static HTML reports and maintainer-facing evidence packets for manual review.
-- Runs local safety checks through existing wrappers for unsafe scripts, secrets, SAST, dependency hygiene, and OSV vulnerability scanning.
+- Runs repository safety checks through existing wrappers for unsafe scripts, secrets, SAST, dependency hygiene, and OSV vulnerability scanning.
 
 ## What ForkSure Does Not Do
 
@@ -47,7 +47,13 @@ You can run the CLI from the source tree:
 python -m forksure.cli --help
 ```
 
-## Local Web UI
+## Web UI
+
+Use the hosted review app at <https://forksure.jri-techyes.top/> to compare two
+GitHub repositories or search a project name for close matches. Hosted comparison
+can include clone-based exact-file similarity and repository security summaries.
+
+To run the same interface locally:
 
 Launch the repository review interface:
 
@@ -60,10 +66,8 @@ supports two-repository comparison and close-match searches using either a
 repository name or `owner/repo`. Use `--no-open` to start the server without
 opening a browser, or `--port` to choose another port.
 
-The hosted app supports GitHub metadata comparison and close-match discovery.
-The Render deployment defined in `render.yaml` can also run clone-based
-similarity and security scans. External scanners still report informational
-findings when their executables are not installed on the backend.
+External scanners report informational findings when their executables are not
+installed on the local machine or hosted backend.
 
 The hosted architecture keeps the static interface on Cloudflare and proxies
 `/api/*` to Render. Set the same private `FORKSURE_PROXY_TOKEN` in Render and as
@@ -74,7 +78,7 @@ service URL.
 Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositories:
 
 ```powershell
-$env:GITHUB_TOKEN = "ghp_..."
+$env:GITHUB_TOKEN = "github_pat_..."
 ```
 
 The token is optional.
@@ -130,7 +134,7 @@ python -m forksure.cli security audit . --json --out reports/security-audit.json
 
 - Fork review: run `forks OWNER/REPO --audit-license --audit-readme` to inspect fork metadata, license drift, and README attribution.
 - Candidate review: run `imposters OWNER/REPO --rare-strings --html` to collect neutral name-collision and rare-string evidence in an HTML report.
-- Two-repository comparison: run `compare SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to compare metadata, license, attribution, exact file similarity, and local safety signals.
+- Two-repository comparison: run `compare SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to compare metadata, license, attribution, exact file similarity, and repository safety signals.
 - Maintainer packet: run `evidence SOURCE_REPO CANDIDATE_REPO --similarity --security --html` to create a concise evidence packet for manual review or support escalation.
 - Complete review: run `review SOURCE_REPO CANDIDATE_REPO --similarity --security --html` for the recommended end-to-end workflow.
 
@@ -169,7 +173,8 @@ violations through manual review before escalating.
 
 ForkSure v0.2.0 makes `review` the primary end-to-end workflow for repository
 metadata, provenance, attribution, optional exact-file similarity, optional
-local security signals, and neutral HTML or JSON evidence output.
+security signals, and neutral HTML or JSON evidence output. The hosted review app
+provides repository comparison and close-match discovery without a local setup.
 
 The project is intentionally small: no database, web UI framework, background
 jobs, or scheduled monitoring.
@@ -177,8 +182,8 @@ jobs, or scheduled monitoring.
 ## Website
 
 The static project website lives in [site/](site/). GitHub Pages deploys it with
-the workflow in [.github/workflows/pages.yml](.github/workflows/pages.yml). A
-custom domain can be configured later in the repository Pages settings.
+the workflow in [.github/workflows/pages.yml](.github/workflows/pages.yml). The
+interactive review app is deployed separately at <https://forksure.jri-techyes.top/>.
 
 ## License
 

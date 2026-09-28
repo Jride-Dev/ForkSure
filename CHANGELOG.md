@@ -4,7 +4,9 @@
 
 - Add a local browser UI for repository comparison and close-name discovery.
 - Add `forksure ui` with safe local defaults and optional similarity/security checks.
-- Deploy a hosted metadata and close-match review UI at `forksure.jri-techyes.top`.
+- Deploy the hosted review UI at <https://forksure.jri-techyes.top/>.
+- Add a protected Render backend for hosted clone-based similarity and security summaries.
+- Proxy hosted API requests through Cloudflare without exposing backend credentials to the browser.
 
 ## v0.2.0 - 2026-09-21
 

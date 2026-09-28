@@ -9,7 +9,7 @@ import pytest
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-TEST_TMP_ROOT = WORKSPACE_ROOT / ".cbh-test-tmp"
+TEST_TMP_ROOT = WORKSPACE_ROOT / ".forksure-test-tmp"
 
 
 @pytest.fixture

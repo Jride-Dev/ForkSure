@@ -15,7 +15,7 @@ LOCAL_SCAN_IGNORED_DIR_NAMES = {
     ".pytest_cache",
     ".pytest-tmp",
     "tmp_pytest_run",
-    ".cbh-test-tmp",
+    ".forksure-test-tmp",
     ".ruff_cache",
     "node_modules",
     "dist",

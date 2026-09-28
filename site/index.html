@@ -17,6 +17,7 @@
         <span>ForkSure</span>
       </a>
       <nav aria-label="Primary navigation">
+        <a href="https://forksure.jri-techyes.top/">Open app</a>
         <a href="#features">Features</a>
         <a href="#commands">Commands</a>
         <a href="#install">Install</a>
@@ -39,8 +40,9 @@
             attribution, optional similarity, and optional security evidence.
           </p>
           <div class="actions">
-            <a class="button primary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
-            <a class="button secondary" href="#local-ui">Run the local UI</a>
+            <a class="button primary" href="https://forksure.jri-techyes.top/">Open ForkSure</a>
+            <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure">View on GitHub</a>
+            <a class="button secondary" href="#review-ui">Run locally</a>
             <a class="button secondary" href="https://github.com/Jride-Dev/ForkSure/releases/tag/v0.2.0">View v0.2.0 release</a>
             <a class="button secondary" href="#commands">See example commands</a>
           </div>
@@ -63,7 +65,7 @@
             <strong>Neutral review summary</strong>
           </div>
           <div class="signal-row">
-            <span>Local safety checks</span>
+            <span>Repository safety checks</span>
             <strong>Scripts + wrappers</strong>
           </div>
         </div>
@@ -96,8 +98,8 @@
         </div>
         <div class="feature-grid">
           <article class="card">
-            <h3>Local Review UI</h3>
-            <p>Enter repository names in a browser interface for comparison or close-match discovery.</p>
+            <h3>Review UI</h3>
+            <p>Enter repository names in the hosted or local browser interface for comparison and close-match discovery.</p>
           </article>
           <article class="card">
             <h3>Fork Audits</h3>
@@ -134,14 +136,15 @@
         </div>
       </section>
 
-      <section class="section two-column" id="local-ui">
+      <section class="section two-column" id="review-ui">
         <div>
-          <p class="eyebrow">Local application</p>
-          <h2>Use ForkSure In Your Browser</h2>
+          <p class="eyebrow">Hosted and local</p>
+          <h2>Review Repositories In Your Browser</h2>
           <p>
-            Start the local review console and enter repository names directly.
-            The UI uses the same provenance and comparison engine as the CLI.
+            Open the hosted app with no local setup, or start the review console
+            on your machine. Both use ForkSure's provenance and comparison engine.
           </p>
+          <p><a class="text-link" href="https://forksure.jri-techyes.top/">Open the hosted review app</a></p>
         </div>
         <div>
           <pre><code>uv run forksure ui</code></pre>
@@ -196,7 +199,8 @@
           <h2>Current Status</h2>
           <p>
             v0.2.0 makes the unified review workflow the recommended starting point.
-            ForkSure remains intentionally small: no database, web UI framework,
+            A hosted review app is available at forksure.jri-techyes.top. ForkSure
+            remains intentionally small: no database, web UI framework,
             background jobs, or scheduled monitoring.
           </p>
         </div>
