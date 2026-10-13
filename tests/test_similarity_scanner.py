@@ -1,7 +1,13 @@
+import os
 from pathlib import Path
 
 from forksure import similarity_scanner
-from forksure.similarity_scanner import MAX_FILE_SIZE_BYTES, _git_environment, scan_repository_similarity
+from forksure.similarity_scanner import (
+    MAX_FILE_SIZE_BYTES,
+    _cache_path_for_repo,
+    _git_environment,
+    scan_repository_similarity,
+)
 
 
 def test_similarity_scanner_finds_exact_same_files(monkeypatch, tmp_path) -> None:
@@ -83,6 +89,29 @@ def test_git_environment_uses_token_without_putting_it_in_clone_url(monkeypatch)
     assert environment["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
     assert environment["GIT_CONFIG_VALUE_0"].startswith("Authorization: Basic ")
     assert "private-read-token" not in environment["GIT_CONFIG_VALUE_0"]
+
+
+def test_explicit_anonymous_git_environment_ignores_ambient_token(monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "server-private-token")
+    monkeypatch.setenv("GIT_ASKPASS", "credential-helper.exe")
+    monkeypatch.setenv("SSH_AUTH_SOCK", "agent-socket")
+
+    environment = _git_environment("", credential_home=Path("isolated-home"))
+
+    assert "GIT_CONFIG_COUNT" not in environment
+    assert "GIT_CONFIG_VALUE_0" not in environment
+    assert "GITHUB_TOKEN" not in environment
+    assert "GIT_ASKPASS" not in environment
+    assert "SSH_AUTH_SOCK" not in environment
+    assert environment["GIT_TERMINAL_PROMPT"] == "0"
+    assert environment["GIT_CONFIG_GLOBAL"] == os.devnull
+
+
+def test_cache_paths_do_not_collide_after_sanitizing() -> None:
+    first = _cache_path_for_repo("a-b/c")
+    second = _cache_path_for_repo("a/b-c")
+
+    assert first != second
 
 
 def _mock_clones(monkeypatch, paths: dict[str, Path]) -> None:

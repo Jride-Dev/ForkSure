@@ -32,6 +32,8 @@ def compare_repositories(
     github_client: GitHubClient,
     *,
     include_security: bool = False,
+    clone_token: str | None = None,
+    clone_root: Path | None = None,
 ) -> dict[str, Any]:
     source_metadata = github_client.get_repo(source_repo)
     candidate_metadata = github_client.get_repo(candidate_repo)
@@ -70,8 +72,12 @@ def compare_repositories(
         },
     }
     if include_security:
-        source_path = ensure_repo_clone(source_repo)
-        candidate_path = ensure_repo_clone(candidate_repo)
+        if clone_token is None and clone_root is None:
+            source_path = ensure_repo_clone(source_repo)
+            candidate_path = ensure_repo_clone(candidate_repo)
+        else:
+            source_path = ensure_repo_clone(source_repo, token=clone_token, cache_root=clone_root)
+            candidate_path = ensure_repo_clone(candidate_repo, token=clone_token, cache_root=clone_root)
         comparison["source_security"] = _security_summary(source_repo, source_path)
         comparison["candidate_security"] = _security_summary(candidate_repo, candidate_path)
     return _with_risk_breakdown(comparison)

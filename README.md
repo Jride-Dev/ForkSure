@@ -79,7 +79,37 @@ The hosted architecture keeps the static interface on Cloudflare and proxies
 `/api/*` to Render. Set the same private `FORKSURE_PROXY_TOKEN` in Render and as
 a Cloudflare Worker secret so the Render API is not exposed as an unrestricted
 public scan endpoint. Set `API_BASE_URL` on the Worker to the HTTPS Render
-service URL.
+service URL. The Worker is proxy-only and will not fall back to a second GitHub
+implementation if the backend is unavailable.
+
+Anonymous hosted reviews are restricted to public repositories. Private
+repository reviews use a request-scoped GitHub App user token and a temporary
+clone workspace. ForkSure keeps the token in a short-lived server-side session;
+the browser receives only an opaque, `HttpOnly` session cookie.
+
+### GitHub App Setup
+
+Create a public GitHub App with these settings:
+
+- Homepage URL: `https://forksure.jri-techyes.top/`
+- Callback URL: `https://forksure.jri-techyes.top/api/auth/github/callback`
+- Setup URL: `https://forksure.jri-techyes.top/api/auth/github/installed`
+- Redirect on update: enabled
+- Repository permissions: Contents `Read-only` and Metadata `Read-only`
+- Webhooks: disabled
+- Request user authorization during installation: disabled
+
+Set these Render environment variables from the GitHub App registration:
+
+- `FORKSURE_GITHUB_APP_CLIENT_ID`
+- `FORKSURE_GITHUB_APP_CLIENT_SECRET`
+- `FORKSURE_GITHUB_APP_SLUG`
+- `FORKSURE_PUBLIC_URL=https://forksure.jri-techyes.top`
+
+Do not put a private-repository PAT in the hosted service's `GITHUB_TOKEN`.
+Hosted anonymous requests deliberately ignore that variable and make
+unauthenticated GitHub requests. GitHub App user tokens are used only for the
+requesting user's connected session.
 
 Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositories:
 
@@ -87,7 +117,7 @@ Set `GITHUB_TOKEN` for higher GitHub API limits when scanning public repositorie
 $env:GITHUB_TOKEN = "github_pat_..."
 ```
 
-The token is optional.
+The token is optional and is intended for the CLI or local UI.
 
 ## Development Setup
 

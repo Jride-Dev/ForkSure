@@ -51,6 +51,12 @@ button, input { font: inherit; }
 
 .brand img { border-radius: 7px; }
 
+.header-actions, .auth-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .header-meta {
   display: flex;
   align-items: center;
@@ -66,6 +72,28 @@ button, input { font: inherit; }
   background: #35a66d;
   box-shadow: 0 0 0 3px #dff3e8;
 }
+
+.auth-controls.is-hidden, .auth-user.is-hidden, #github-connect.is-hidden { display: none; }
+.auth-action, .auth-user a, .auth-user button {
+  color: var(--teal-dark);
+  background: transparent;
+  border: 0;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.auth-action {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid #a9c4ca;
+  border-radius: 6px;
+  background: #f4fafb;
+}
+.auth-user span { color: var(--ink); font-size: 13px; font-weight: 700; }
+.auth-action:hover, .auth-user a:hover, .auth-user button:hover { color: var(--teal); }
 
 .shell {
   width: min(1120px, calc(100% - 36px));
@@ -200,6 +228,8 @@ footer { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 22px 0 
 @media (max-width: 760px) {
   .app-header { padding: 0 18px; }
   .header-meta { display: none; }
+  .auth-user { gap: 8px; }
+  .auth-user a { display: none; }
   .shell { width: calc(100% - 20px); padding-top: 28px; }
   .intro h1 { font-size: 32px; }
   .intro h1, .intro p { overflow-wrap: anywhere; }

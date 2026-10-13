@@ -33,6 +33,10 @@ class GitHubRateLimitError(GitHubAPIError):
     """Raised when the GitHub API rate limit is exceeded."""
 
 
+class GitHubPrivateRepositoryError(GitHubAPIError):
+    """Raised when anonymous hosted access reaches a private repository."""
+
+
 @dataclass(frozen=True)
 class OwnerRepo:
     owner: str
@@ -60,6 +64,7 @@ class GitHubRepo(BaseModel):
     stargazers_count: int = Field(default=0)
     default_branch: str
     fork: bool = False
+    private: bool = False
 
     @property
     def stars(self) -> int:
@@ -121,19 +126,26 @@ class GitHubClient:
         token: str | None = None,
         base_url: str = GITHUB_API_URL,
         timeout: float = 20.0,
+        allow_private: bool = True,
     ) -> None:
         load_dotenv()
         self.token = token if token is not None else os.getenv("GITHUB_TOKEN")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.allow_private = allow_private
+        self._checked_repositories: set[str] = set()
 
     def get_repo(self, owner_repo: str) -> GitHubRepo:
         parsed = parse_owner_repo(owner_repo)
         data = self._request("GET", f"/repos/{parsed.owner}/{parsed.repo}")
-        return GitHubRepo.model_validate(data)
+        repo = GitHubRepo.model_validate(data)
+        self._ensure_visibility(repo)
+        self._checked_repositories.add(parsed.slug.casefold())
+        return repo
 
     def list_forks(self, owner_repo: str) -> list[GitHubRepo]:
         parsed = parse_owner_repo(owner_repo)
+        self._ensure_repository_checked(parsed.slug)
         forks: list[GitHubRepo] = []
         page = 1
         per_page = 100
@@ -147,13 +159,17 @@ class GitHubClient:
             if not isinstance(data, list):
                 raise GitHubAPIError("Unexpected GitHub response while listing forks.")
 
-            forks.extend(GitHubRepo.model_validate(item) for item in data)
+            normalized = [GitHubRepo.model_validate(item) for item in data]
+            for repo in normalized:
+                self._ensure_visibility(repo)
+            forks.extend(normalized)
             if len(data) < per_page:
                 return forks
             page += 1
 
     def get_repo_license(self, owner_repo: str) -> dict[str, bool | str | None]:
         parsed = parse_owner_repo(owner_repo)
+        self._ensure_repository_checked(parsed.slug)
         try:
             data = self._request("GET", f"/repos/{parsed.owner}/{parsed.repo}/license")
         except GitHubNotFoundError:
@@ -178,6 +194,7 @@ class GitHubClient:
 
     def get_repo_readme(self, owner_repo: str) -> dict[str, bool | str | None]:
         parsed = parse_owner_repo(owner_repo)
+        self._ensure_repository_checked(parsed.slug)
         try:
             data = self._request("GET", f"/repos/{parsed.owner}/{parsed.repo}/readme")
         except GitHubNotFoundError:
@@ -226,7 +243,11 @@ class GitHubClient:
             if not isinstance(items, list):
                 return repositories
 
-            repositories.extend(_normalize_repository_item(item) for item in items if isinstance(item, dict))
+            repositories.extend(
+                _normalize_repository_item(item)
+                for item in items
+                if isinstance(item, dict) and (self.allow_private or not item.get("private", False))
+            )
             if len(items) < safe_per_page:
                 return repositories
 
@@ -254,11 +275,26 @@ class GitHubClient:
             if not isinstance(items, list):
                 return results
 
-            results.extend(_normalize_code_search_item(item) for item in items if isinstance(item, dict))
+            results.extend(
+                _normalize_code_search_item(item)
+                for item in items
+                if isinstance(item, dict) and (self.allow_private or not _code_item_is_private(item))
+            )
             if len(items) < safe_per_page:
                 return results
 
         return results
+
+    def _ensure_repository_checked(self, owner_repo: str) -> None:
+        if self.allow_private or owner_repo.casefold() in self._checked_repositories:
+            return
+        self.get_repo(owner_repo)
+
+    def _ensure_visibility(self, repo: GitHubRepo) -> None:
+        if repo.private and not self.allow_private:
+            raise GitHubPrivateRepositoryError(
+                "Private repository access requires connecting an authorized GitHub account."
+            )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         headers = {
@@ -385,6 +421,8 @@ def _normalize_repository_item(item: dict[str, Any]) -> dict[str, Any]:
         "license_key": _optional_string(license_info.get("key")) if isinstance(license_info, dict) else None,
         "license_name": _optional_string(license_info.get("name")) if isinstance(license_info, dict) else None,
         "topics": [str(topic) for topic in topics] if isinstance(topics, list) else [],
+        "private": bool(item.get("private", False)),
+        "visibility": _optional_string(item.get("visibility")) or "public",
     }
 
 
@@ -402,6 +440,11 @@ def _normalize_code_search_item(item: dict[str, Any]) -> dict[str, Any]:
         "repository_fork": bool(repository_data.get("fork", False)),
         "repository_owner": _optional_string(owner_login) or "",
     }
+
+
+def _code_item_is_private(item: dict[str, Any]) -> bool:
+    repository = item.get("repository")
+    return bool(repository.get("private", False)) if isinstance(repository, dict) else False
 
 
 def _optional_int(value: Any) -> int:

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add GitHub App authentication for request-authorized private repository reviews.
+- Restrict anonymous hosted reviews to public repositories and isolate hosted clones per request.
+- Make the Cloudflare Worker proxy-only so deployment drift cannot bypass backend authorization.
 - Add a local browser UI for repository comparison and close-name discovery.
 - Add `forksure ui` with safe local defaults and optional similarity/security checks.
 - Deploy the hosted review UI at <https://forksure.jri-techyes.top/>.

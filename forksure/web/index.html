@@ -19,9 +19,19 @@
         <img src="/assets/forksure-mark.svg" width="36" height="36" alt="">
         <span>ForkSure</span>
       </a>
-      <div class="header-meta">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="runtime-label">Local review console</span>
+      <div class="header-actions">
+        <div class="header-meta">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="runtime-label">Local review console</span>
+        </div>
+        <div class="auth-controls is-hidden" id="auth-controls">
+          <a class="auth-action" id="github-connect" href="/api/auth/github/connect">Connect GitHub</a>
+          <div class="auth-user is-hidden" id="github-user">
+            <span id="github-login"></span>
+            <a href="/api/auth/github/connect">Repositories</a>
+            <button id="github-logout" type="button">Sign out</button>
+          </div>
+        </div>
       </div>
     </header>
 

@@ -1,5 +1,6 @@
 const results = document.querySelector("#results");
 const tabs = document.querySelectorAll(".tab");
+const logoutButton = document.querySelector("#github-logout");
 
 loadCapabilities();
 
@@ -12,6 +13,15 @@ tabs.forEach((tab) => {
       document.querySelector(`#${item.dataset.panel}`).classList.toggle("is-hidden", !active);
     });
   });
+});
+
+logoutButton.addEventListener("click", async () => {
+  logoutButton.disabled = true;
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } finally {
+    window.location.reload();
+  }
 });
 
 document.querySelector("#compare-form").addEventListener("submit", async (event) => {
@@ -224,9 +234,27 @@ async function loadCapabilities() {
     document.querySelector("#runtime-label").textContent = capabilities.hosted ? "Hosted review console" : "Local review console";
     setCapability("include_similarity", "similarity-label", capabilities.similarity, "Exact-file similarity");
     setCapability("include_security", "security-label", capabilities.security, "Security audit");
+    renderAuthentication(capabilities);
   } catch {
     // The core metadata UI remains usable if capability discovery fails.
   }
+}
+
+function renderAuthentication(capabilities) {
+  const controls = document.querySelector("#auth-controls");
+  if (!capabilities.github_app_configured) return;
+  controls.classList.remove("is-hidden");
+  const connect = document.querySelector("#github-connect");
+  const user = document.querySelector("#github-user");
+  if (!capabilities.authenticated) {
+    connect.classList.remove("is-hidden");
+    user.classList.add("is-hidden");
+    return;
+  }
+  connect.classList.add("is-hidden");
+  user.classList.remove("is-hidden");
+  const suffix = capabilities.private_repository_access ? "" : " (install required)";
+  document.querySelector("#github-login").textContent = `@${capabilities.github_login}${suffix}`;
 }
 
 function setCapability(inputName, labelId, enabled, label) {

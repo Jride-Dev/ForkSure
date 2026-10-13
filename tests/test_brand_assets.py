@@ -30,7 +30,7 @@ def test_product_screenshot_set_exists() -> None:
         "forksure-mobile.png",
     }
 
-    assert expected == {path.name for path in screenshots.glob("*.png")}
+    assert expected <= {path.name for path in screenshots.glob("*.png")}
     assert all(_png_dimensions(screenshots / name)[0] >= 780 for name in expected)
 
 

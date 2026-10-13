@@ -83,14 +83,29 @@ class SimilarityScanError(RuntimeError):
     """Raised when clone-based similarity scanning cannot complete."""
 
 
-def scan_repository_similarity(source_repo: str, candidate_repo: str) -> dict[str, Any]:
-    source_path = _ensure_repo_clone(source_repo)
-    candidate_path = _ensure_repo_clone(candidate_repo)
+def scan_repository_similarity(
+    source_repo: str,
+    candidate_repo: str,
+    *,
+    token: str | None = None,
+    cache_root: Path | None = None,
+) -> dict[str, Any]:
+    if token is None and cache_root is None:
+        source_path = _ensure_repo_clone(source_repo)
+        candidate_path = _ensure_repo_clone(candidate_repo)
+    else:
+        source_path = _ensure_repo_clone(source_repo, token=token, cache_root=cache_root)
+        candidate_path = _ensure_repo_clone(candidate_repo, token=token, cache_root=cache_root)
     return _scan_repository_paths(source_repo, candidate_repo, source_path, candidate_path)
 
 
-def ensure_repo_clone(owner_repo: str) -> Path:
-    return _ensure_repo_clone(owner_repo)
+def ensure_repo_clone(
+    owner_repo: str,
+    *,
+    token: str | None = None,
+    cache_root: Path | None = None,
+) -> Path:
+    return _ensure_repo_clone(owner_repo, token=token, cache_root=cache_root)
 
 
 def _scan_repository_paths(
@@ -171,14 +186,24 @@ def _scan_repository_paths(
     }
 
 
-def _ensure_repo_clone(owner_repo: str) -> Path:
-    target = _cache_path_for_repo(owner_repo)
-    cache_root = CACHE_ROOT.resolve()
+def _ensure_repo_clone(
+    owner_repo: str,
+    *,
+    token: str | None = None,
+    cache_root: Path | None = None,
+) -> Path:
+    selected_cache_root = cache_root or CACHE_ROOT
+    target = _cache_path_for_repo(owner_repo, selected_cache_root)
+    cache_root = selected_cache_root.resolve()
     target_resolved = target.resolve()
     cache_root.mkdir(parents=True, exist_ok=True)
 
     if target.exists():
-        if (target / ".git").exists() and _run_git(["git", "-C", str(target), "pull", "--ff-only"]):
+        if (target / ".git").exists() and _run_git(
+            ["git", "-C", str(target), "pull", "--ff-only"],
+            token=token,
+            credential_home=cache_root,
+        ):
             return target
         _remove_cached_repo(target_resolved, cache_root)
 
@@ -189,38 +214,79 @@ def _ensure_repo_clone(owner_repo: str) -> Path:
             check=True,
             capture_output=True,
             text=True,
-            env=_git_environment(),
+            env=_git_environment(token, credential_home=cache_root),
         )
     except (OSError, subprocess.CalledProcessError) as exc:
         raise SimilarityScanError(f"Could not clone {owner_repo}: {exc}") from exc
     return target
 
 
-def _run_git(command: list[str]) -> bool:
+def _run_git(
+    command: list[str],
+    *,
+    token: str | None = None,
+    credential_home: Path | None = None,
+) -> bool:
     try:
         result = subprocess.run(
             command,
             check=False,
             capture_output=True,
             text=True,
-            env=_git_environment(),
+            env=_git_environment(token, credential_home=credential_home),
         )
     except OSError:
         return False
     return result.returncode == 0
 
 
-def _git_environment() -> dict[str, str]:
+def _git_environment(
+    token: str | None = None,
+    *,
+    credential_home: Path | None = None,
+) -> dict[str, str]:
     environment = os.environ.copy()
-    token = os.getenv("GITHUB_TOKEN", "").strip()
-    if not token:
+    if token is not None:
+        _remove_ambient_git_credentials(environment)
+        isolated_home = str((credential_home or Path(os.devnull)).resolve())
+        environment.update(
+            {
+                "GIT_TERMINAL_PROMPT": "0",
+                "GCM_INTERACTIVE": "Never",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_SYSTEM": os.devnull,
+                "HOME": isolated_home,
+                "USERPROFILE": isolated_home,
+            }
+        )
+
+    selected_token = os.getenv("GITHUB_TOKEN", "").strip() if token is None else token.strip()
+    if not selected_token:
         return environment
 
-    credentials = base64.b64encode(f"x-access-token:{token}".encode("utf-8")).decode("ascii")
+    credentials = base64.b64encode(f"x-access-token:{selected_token}".encode("utf-8")).decode("ascii")
     environment["GIT_CONFIG_COUNT"] = "1"
     environment["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
     environment["GIT_CONFIG_VALUE_0"] = f"Authorization: Basic {credentials}"
     return environment
+
+
+def _remove_ambient_git_credentials(environment: dict[str, str]) -> None:
+    credential_variables = {
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "GIT_ASKPASS",
+        "SSH_ASKPASS",
+        "GIT_SSH",
+        "GIT_SSH_COMMAND",
+        "SSH_AUTH_SOCK",
+        "NETRC",
+        "CURL_HOME",
+    }
+    for name in list(environment):
+        if name.upper() in credential_variables or name.upper().startswith("GIT_CONFIG_"):
+            environment.pop(name, None)
 
 
 def _remove_cached_repo(target: Path, cache_root: Path) -> None:
@@ -234,10 +300,11 @@ def _remove_cached_repo(target: Path, cache_root: Path) -> None:
         target.unlink()
 
 
-def _cache_path_for_repo(owner_repo: str) -> Path:
+def _cache_path_for_repo(owner_repo: str, cache_root: Path = CACHE_ROOT) -> Path:
     parsed = parse_owner_repo(owner_repo)
     safe_name = _safe_repo_path_name(parsed.slug)
-    return CACHE_ROOT / safe_name
+    suffix = hashlib.sha256(parsed.slug.casefold().encode("utf-8")).hexdigest()[:12]
+    return cache_root / f"{safe_name}-{suffix}"
 
 
 def _repo_clone_url(owner_repo: str) -> str:

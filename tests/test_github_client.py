@@ -2,7 +2,14 @@ import base64
 
 import pytest
 
-from forksure.github_client import GitHubAPIError, GitHubClient, GitHubNotFoundError, InvalidOwnerRepoError, parse_owner_repo
+from forksure.github_client import (
+    GitHubAPIError,
+    GitHubClient,
+    GitHubNotFoundError,
+    GitHubPrivateRepositoryError,
+    InvalidOwnerRepoError,
+    parse_owner_repo,
+)
 
 
 def test_parse_owner_repo_accepts_owner_and_repo() -> None:
@@ -110,3 +117,59 @@ def test_search_code_handles_api_error_gracefully(monkeypatch) -> None:
     monkeypatch.setattr(client, "_request", raise_api_error)
 
     assert client.search_code('"rare phrase"') == []
+
+
+def test_public_only_client_rejects_private_repository(monkeypatch) -> None:
+    client = GitHubClient(token="server-token", allow_private=False)
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: _repo_payload(private=True))
+
+    with pytest.raises(GitHubPrivateRepositoryError):
+        client.get_repo("owner/private-repo")
+
+
+def test_public_only_client_checks_visibility_before_readme(monkeypatch) -> None:
+    client = GitHubClient(token="server-token", allow_private=False)
+    calls: list[str] = []
+
+    def fake_request(method, path, **kwargs):
+        calls.append(path)
+        return _repo_payload(private=True)
+
+    monkeypatch.setattr(client, "_request", fake_request)
+
+    with pytest.raises(GitHubPrivateRepositoryError):
+        client.get_repo_readme("owner/private-repo")
+
+    assert calls == ["/repos/owner/private-repo"]
+
+
+def test_public_only_search_filters_private_results(monkeypatch) -> None:
+    client = GitHubClient(token="server-token", allow_private=False)
+    public = _repo_payload(private=False)
+    private = _repo_payload(private=True)
+    private["full_name"] = "owner/private-repo"
+    private["name"] = "private-repo"
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: {"items": [public, private]})
+
+    results = client.search_repositories("repo in:name")
+
+    assert [item["full_name"] for item in results] == ["owner/repo"]
+    assert results[0]["visibility"] == "public"
+
+
+def _repo_payload(*, private: bool) -> dict:
+    return {
+        "id": 1,
+        "name": "repo",
+        "full_name": "owner/repo",
+        "owner": {"login": "owner", "html_url": "https://github.com/owner"},
+        "html_url": "https://github.com/owner/repo",
+        "description": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "pushed_at": "2026-01-02T00:00:00Z",
+        "stargazers_count": 0,
+        "default_branch": "main",
+        "fork": False,
+        "private": private,
+        "visibility": "private" if private else "public",
+    }
