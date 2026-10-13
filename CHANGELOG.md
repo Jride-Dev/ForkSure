@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add consistent creator attribution to package metadata, documentation, public interfaces, and citation metadata.
 - Add GitHub App authentication for request-authorized private repository reviews.
 - Restrict anonymous hosted reviews to public repositories and isolate hosted clones per request.
 - Make the Cloudflare Worker proxy-only so deployment drift cannot bypass backend authorization.

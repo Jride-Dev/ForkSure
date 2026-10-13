@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use ForkSure, please cite it using this metadata."
+title: "ForkSure"
+type: software
+authors:
+  - family-names: "Curtis"
+    given-names: "Jay"
+    alias: "Jride-Dev"
+version: 0.2.0
+date-released: 2026-09-21
+license: MIT
+repository-code: "https://github.com/Jride-Dev/ForkSure"
+url: "https://forksure.jri-techyes.top/"
+abstract: >-
+  Repository provenance and safety scanner for fork audits, imposter repository
+  discovery, license drift, attribution checks, exact-file similarity, and
+  repository safety signals.

@@ -7,6 +7,8 @@ ForkSure is a Python CLI and browser app for repository provenance review, fork 
 imposter/name-collision checks, license drift scanning, README attribution review,
 code similarity evidence, repository safety signals, and neutral evidence packets.
 
+Created by [Jay Curtis (@Jride-Dev)](https://github.com/Jride-Dev).
+
 Hosted review app: <https://forksure.jri-techyes.top/>
 
 Project site: <https://jride-dev.github.io/ForkSure/>
@@ -220,6 +222,12 @@ jobs, or scheduled monitoring.
 The static project website lives in [site/](site/). GitHub Pages deploys it with
 the workflow in [.github/workflows/pages.yml](.github/workflows/pages.yml). The
 interactive review app is deployed separately at <https://forksure.jri-techyes.top/>.
+
+## Creator
+
+ForkSure was created and is maintained by
+[Jay Curtis (@Jride-Dev)](https://github.com/Jride-Dev). For academic, research,
+or tooling references, citation metadata is available in [CITATION.cff](CITATION.cff).
 
 ## License
 

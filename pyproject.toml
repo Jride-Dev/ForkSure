@@ -9,6 +9,9 @@ description = "GitHub repository provenance, fork audit, imposter repo, and lice
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
+authors = [
+    { name = "Jay Curtis" },
+]
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -27,6 +30,11 @@ dev = [
 
 [project.scripts]
 forksure = "forksure.cli:app"
+
+[project.urls]
+Homepage = "https://forksure.jri-techyes.top/"
+Repository = "https://github.com/Jride-Dev/ForkSure"
+Issues = "https://github.com/Jride-Dev/ForkSure/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
